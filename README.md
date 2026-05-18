@@ -16,7 +16,46 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Routes & features
+
+| Route | File | Description |
+|-------|------|-------------|
+| `/admin` | `app/admin/` | Password-protected admin area (client-side auth via `localStorage`) |
+| `/talk` | `app/talk/page.tsx` | Talk page (placeholder content for now) |
+| `/experience` | `app/experience/page.tsx` | Experience page (placeholder content for now) |
+
+### Admin (`/admin`)
+
+- Sign in with a fixed password (see [Changing the admin password](#changing-the-admin-password) below).
+- Session is stored in `localStorage` under the key `admin-auth`.
+- Sessions expire **7 days** after login; you must sign in again after that.
+- Use the **Log out** button on the admin page, or call `logout()` from `lib/admin-auth.ts`.
+
+Relevant files:
+
+- `lib/admin-config.ts` — admin password constant
+- `lib/admin-auth.ts` — `login()`, `logout()`, `isAuthenticated()`
+- `app/admin/AdminPage.tsx` — login form and protected UI
+
+**Note:** Admin protection is client-side only. It is suitable for casual access control on a personal site, not for sensitive data.
+
+### Talk & Experience
+
+Placeholder copy lives in each route’s `page.tsx`. Edit those files to update the content.
+
+## Changing the admin password
+
+1. Open `lib/admin-config.ts`.
+2. Change the value of `ADMIN_PASSWORD`:
+
+```ts
+export const ADMIN_PASSWORD = "your-new-password";
+```
+
+3. Save the file and restart the dev server if it is running.
+4. Anyone already signed in keeps their session until it expires (7 days) or they log out. After a password change, old sessions still work until expiry—use **Log out** or clear `admin-auth` in browser `localStorage` if you need to force re-login immediately.
+
+Default password before you change it: `change-me`.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
