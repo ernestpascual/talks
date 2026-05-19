@@ -1,25 +1,30 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState, useSyncExternalStore } from "react";
 import { isAuthenticated, login, logout } from "@/lib/admin-auth";
 
+function subscribe() {
+  return () => {};
+}
+
 export default function AdminPage() {
-  const [authed, setAuthed] = useState(false);
-  const [ready, setReady] = useState(false);
+  const storedAuthed = useSyncExternalStore(
+    subscribe,
+    isAuthenticated,
+    () => false,
+  );
+  const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    setAuthed(isAuthenticated());
-    setReady(true);
-  }, []);
+  const authed = signedIn ?? storedAuthed;
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
 
     if (login(password)) {
-      setAuthed(true);
+      setSignedIn(true);
       setPassword("");
       return;
     }
@@ -29,17 +34,9 @@ export default function AdminPage() {
 
   function handleLogout() {
     logout();
-    setAuthed(false);
+    setSignedIn(false);
     setPassword("");
     setError("");
-  }
-
-  if (!ready) {
-    return (
-      <main className="mx-auto flex min-h-full max-w-lg flex-col justify-center px-6 py-16">
-        <p className="text-zinc-600 dark:text-zinc-400">Loading…</p>
-      </main>
-    );
   }
 
   if (!authed) {
