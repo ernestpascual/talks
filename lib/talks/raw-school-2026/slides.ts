@@ -9,12 +9,12 @@ export type Slide =
   | { number: 4; kind: "artwork" }
   | { number: 5; kind: "artwork" }
   | { number: 6; kind: "statement-eye"; text: string }
-  | { number: 7; kind: "poll"; title: string; subtitle: string }
+  | { number: 7; kind: "artwork" }
   | { number: 8; kind: "artwork-video" }
   | { number: 9; kind: "fruit-ninja" }
   | { number: 10; kind: "artwork" }
-  | { number: 11; kind: "statement"; text: string }
-  | { number: 12; kind: "heading"; text: string }
+  | { number: 11; kind: "artwork" }
+  | { number: 12; kind: "artwork" }
   | { number: 13; kind: "artwork-video" }
   | { number: 14; kind: "artwork-video" };
 
@@ -29,21 +29,12 @@ export const slides: Slide[] = [
     kind: "statement-eye",
     text: "the input becomes output if i process",
   },
-  {
-    number: 7,
-    kind: "poll",
-    title: "how do you use AI",
-    subtitle: "poll the canvas → results processed by LLM → weight IPO",
-  },
+    { number: 7, kind: "artwork" },
   { number: 8, kind: "artwork-video" },
   { number: 9, kind: "fruit-ninja" },
   { number: 10, kind: "artwork" },
-  {
-    number: 11,
-    kind: "statement",
-    text: "Applying the DNA and creating your IPO",
-  },
-  { number: 12, kind: "heading", text: "hyperpersonalization" },
+  { number: 11, kind: "artwork" },
+  { number: 12, kind: "artwork" },
   { number: 13, kind: "artwork-video" },
   { number: 14, kind: "artwork-video" },
 ];

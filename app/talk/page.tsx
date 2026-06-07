@@ -9,7 +9,7 @@ export default function TalkPage() {
         <li>
           <Link
             href={`${TALK_BASE_PATH}/1`}
-            className="text-lg font-medium text-zinc-950 underline-offset-4 hover:underline dark:text-zinc-50"
+            className="text-lg font-light text-zinc-950 underline-offset-4 hover:underline dark:text-zinc-50"
           >
             Raw School 2026
           </Link>

@@ -4,8 +4,12 @@ import type { Slide } from "@/lib/talks/raw-school-2026/slides";
 import slide2Artwork from "../img/slide2.png";
 import slide4Artwork from "../img/slide4.png";
 import slide5Artwork from "../img/slide5.png";
+import slide7Artwork from "../img/slide7.png";
 import slide8Artwork from "../img/slide8.png";
 import slide10Artwork from "../img/slide10.png";
+import krebsQr from "@/app/talks/raw-school-2026/img/krebs.png";
+import slide11Artwork from "../img/slide11.png";
+import slide12Artwork from "../img/slide12.png";
 import slide13Artwork from "../img/slide13.png";
 import slide14Artwork from "../img/slide14.png";
 import {
@@ -15,6 +19,7 @@ import {
 import Slide1Hero from "./Slide1Hero";
 import Slide6EyeTrack from "./Slide6EyeTrack";
 import Slide9FruitNinja from "./Slide9FruitNinja";
+import QrOverlay from "./QrOverlay";
 
 const SLIDE2_BG_VIDEO = "/talks/raw-school-2026/img/slide2bg.mp4";
 const SLIDE8_BG_VIDEO = "/talks/raw-school-2026/img/slide8bg.mp4";
@@ -29,9 +34,12 @@ const ARTWORK_VIDEO_BY_SLIDE = {
 } as const;
 
 const ARTWORK_BY_SLIDE = {
+  7: slide7Artwork,
   4: slide4Artwork,
   5: slide5Artwork,
   10: slide10Artwork,
+  11: slide11Artwork,
+  12: slide12Artwork,
 } as const;
 
 const center = "flex min-h-screen items-center justify-center px-16 py-12";
@@ -55,17 +63,17 @@ export default function SlideContent({ slide }: { slide: Slide }) {
     case "artwork": {
       const image = ARTWORK_BY_SLIDE[slide.number];
       if (!image) return null;
+      if (slide.number === 10) {
+        return (
+          <>
+            <SlideFullscreenArtwork image={image} />
+            <QrOverlay image={krebsQr} ariaLabel="Krebs demo QR code" />
+          </>
+        );
+      }
       return <SlideFullscreenArtwork image={image} />;
     }
 
-    case "heading":
-      return (
-        <div className={center}>
-          <h2 className="text-center text-4xl font-medium capitalize sm:text-5xl md:text-6xl">
-            {slide.text}
-          </h2>
-        </div>
-      );
 
     case "venn":
       return (
@@ -117,39 +125,6 @@ export default function SlideContent({ slide }: { slide: Slide }) {
 
     case "statement-eye":
       return <Slide6EyeTrack />;
-
-    case "statement":
-      return (
-        <div className={center}>
-          <p className="max-w-4xl text-center text-2xl font-light leading-relaxed sm:text-3xl md:text-4xl">
-            {slide.text}
-          </p>
-        </div>
-      );
-
-    case "poll":
-      return (
-        <div className={`${center} flex-col gap-8`}>
-          <h2 className="text-center text-3xl font-medium capitalize sm:text-4xl md:text-5xl">
-            {slide.title}
-          </h2>
-          <p className="max-w-2xl text-center text-lg text-white/70 sm:text-xl">
-            {slide.subtitle}
-          </p>
-          <div className="mt-4 grid w-full max-w-lg grid-cols-3 gap-3 text-center text-sm text-white/50">
-            <div className="rounded-xl border border-dashed border-white/25 py-8">
-              poll
-            </div>
-            <div className="rounded-xl border border-dashed border-white/25 py-8">
-              canvas
-            </div>
-            <div className="rounded-xl border border-dashed border-white/25 py-8">
-              LLM → IPO
-            </div>
-          </div>
-        </div>
-      );
-
     case "fruit-ninja":
       return <Slide9FruitNinja />;
 

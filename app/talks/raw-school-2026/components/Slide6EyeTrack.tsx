@@ -1,12 +1,16 @@
 "use client";
 
+import pricingDemoQr from "@/app/talks/raw-school-2026/img/pricingdemo.png";
 import { faceBoundsToScreenStyle } from "@/lib/face-mesh/bounds";
+/** Tune smile tiers: `lib/face-mesh/smile-config.ts` */
+export { SMILE_SENSITIVITY, SMILE_TIER_DISCOUNTS } from "@/lib/face-mesh/smile-config";
 import { useFaceMesh } from "@/lib/face-mesh/useFaceMesh";
 import type { TrackingStatus } from "@/lib/face-mesh/tracking-status";
 import { useCallback, useEffect, useRef, useState } from "react";
+import QrOverlay from "./QrOverlay";
 
 const START_PRICE = 100;
-const PRICE_STEP = 0.5;
+const PRICE_INCREASE_STEP = 0.5;
 const TICK_MS = 1000;
 const COUNTDOWN_SECONDS = 10;
 
@@ -58,12 +62,12 @@ function statusHint(
   if (countdown === null) return "Press Start when one person is in frame";
   if (countdown === 0) return "Time's up — price locked";
   if (faceCount !== 1) return "Waiting for exactly one person";
-  return "Smile to lower price · neutral face raises it";
+  return "Bigger smile = bigger discount (up to −2.00) · neutral face +0.50";
 }
 
 export default function Slide6EyeTrack() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const isSmilingRef = useRef(false);
+  const smileDiscountRef = useRef(0);
 
   const [price, setPrice] = useState(START_PRICE);
   const [countdown, setCountdown] = useState<number | null>(null);
@@ -76,14 +80,15 @@ export default function Slide6EyeTrack() {
     setErrorMessage(message);
   }, []);
 
-  const { bindVideoRef, faceCount, faceBounds, isSmiling, status } = useFaceMesh({
+  const { bindVideoRef, faceCount, faceBounds, isSmiling, smileDiscount, status } =
+    useFaceMesh({
     videoRef,
     enabled: true,
     maxNumFaces: 2,
     onError: handleError,
   });
 
-  isSmilingRef.current = isSmiling;
+  smileDiscountRef.current = smileDiscount;
 
   const onePerson = faceCount === 1;
 
@@ -92,10 +97,11 @@ export default function Slide6EyeTrack() {
 
     const id = window.setInterval(() => {
       setPrice((current) => {
-        if (isSmilingRef.current) {
-          return Math.max(0, current - PRICE_STEP);
+        const discount = smileDiscountRef.current;
+        if (discount > 0) {
+          return Math.max(0, current - discount);
         }
-        return current + PRICE_STEP;
+        return current + PRICE_INCREASE_STEP;
       });
     }, TICK_MS);
 
@@ -139,7 +145,7 @@ export default function Slide6EyeTrack() {
 
       {faceBounds && faceCount === 1 ? (
         <div
-          className="pointer-events-none absolute z-[5] animate-pulse rounded-[38%] border-2 border-emerald-400 shadow-[0_0_24px_rgba(52,211,153,0.45)]"
+          className="pointer-events-none absolute z-[5] animate-pulse rounded-[38%] border-2 border-[#DB1A1A] shadow-[0_0_24px_rgba(219,26,26,0.45)]"
           style={faceBoundsToScreenStyle(faceBounds)}
           aria-hidden
         />
@@ -171,7 +177,9 @@ export default function Slide6EyeTrack() {
             <span
               className={`rounded-full border px-6 py-3 text-base font-semibold uppercase tracking-wider backdrop-blur-md transition-all sm:text-lg ${expressionIndicatorClass(onePerson && isSmiling, "smile")}`}
             >
-              Smiling
+              {onePerson && smileDiscount > 0
+                ? `Smiling −${smileDiscount.toFixed(2)}`
+                : "Smiling"}
             </span>
             <span
               className={`rounded-full border px-6 py-3 text-base font-semibold uppercase tracking-wider backdrop-blur-md transition-all sm:text-lg ${expressionIndicatorClass(onePerson && !isSmiling, "neutral")}`}
@@ -218,6 +226,8 @@ export default function Slide6EyeTrack() {
           </button>
         </div>
       </div>
+
+      <QrOverlay image={pricingDemoQr} ariaLabel="Pricing demo QR code" />
     </div>
   );
 }
