@@ -1,0 +1,47 @@
+/* Masking viewport — crops everything outside the bounds */
+.viewport {
+  --marquee-item-width: 200px;
+  width: var(--marquee-item-width);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  background-color: transparent;
+  padding: 10px 0;
+}
+
+/* Duplicated track — GPU-accelerated infinite loop */
+.track {
+  display: flex;
+  flex-direction: row;
+  margin: 0;
+  padding: 0;
+  list-style-type: none;
+  will-change: transform;
+  animation: infinite-marquee 6s linear infinite;
+}
+
+.item {
+  flex-shrink: 0;
+  width: var(--marquee-item-width);
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: rgb(237, 237, 237);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+@keyframes infinite-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(calc(-1 * var(--marquee-item-width)));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track {
+    animation: none;
+  }
+}

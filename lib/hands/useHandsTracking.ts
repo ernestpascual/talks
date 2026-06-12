@@ -21,13 +21,22 @@ export type HandPoint = { x: number; y: number };
 
 export type SwordPose = { tip: HandPoint; dip: HandPoint };
 
-type HandSlot = {
+export type HandSlot = {
   indexTip: HandPoint | null;
   indexDip: HandPoint | null;
+  middleMcp?: HandPoint | null;
+  ringMcp?: HandPoint | null;
+  wrist?: HandPoint | null;
 };
 
 function emptySlot(): HandSlot {
-  return { indexTip: null, indexDip: null };
+  return {
+    indexTip: null,
+    indexDip: null,
+    middleMcp: null,
+    ringMcp: null,
+    wrist: null,
+  };
 }
 
 type UseHandsTrackingOptions = {
@@ -46,14 +55,21 @@ export function useHandsTracking({
   const [handCount, setHandCount] = useState(0);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
 
   const slotsRef = useRef<HandSlot[]>(
     Array.from({ length: MAX_TRACKED_HANDS }, emptySlot),
   );
 
+  const onErrorRef = useRef(onError);
+  useEffect(() => {
+    onErrorRef.current = onError;
+  });
+
   const bindVideoRef = useCallback(
     (node: HTMLVideoElement | null) => {
       videoRef.current = node;
+      setVideoElement(node);
     },
     [videoRef],
   );
@@ -63,12 +79,12 @@ export function useHandsTracking({
   }, []);
 
   useEffect(() => {
-    if (!enabled || !videoRef.current) return;
+    if (!enabled || !videoElement) return;
 
     let active = true;
     let camera: { start: () => Promise<void>; stop?: () => void } | null = null;
     let hands: HandsInstance | null = null;
-    const videoEl = videoRef.current;
+    const videoEl = videoElement;
 
     async function start() {
       setReady(false);
@@ -78,7 +94,7 @@ export function useHandsTracking({
 
       try {
         await loadMediaPipeHandsScripts();
-        if (!active || !videoRef.current) return;
+        if (!active || !videoEl) return;
 
         const Hands = window.Hands!;
         const Camera = window.Camera!;
@@ -114,6 +130,10 @@ export function useHandsTracking({
             const landmarks = handsList[i]!;
             const tip = landmarks[INDEX_TIP];
             const dip = landmarks[INDEX_DIP];
+            const wrist = landmarks[0];
+            const middleMcp = landmarks[9];
+            const ringMcp = landmarks[13];
+
             if (!tip) {
               slotsRef.current[i] = emptySlot();
               continue;
@@ -122,6 +142,9 @@ export function useHandsTracking({
             const point: HandPoint = { x: tip.x, y: tip.y };
             slot.indexTip = point;
             slot.indexDip = dip ? { x: dip.x, y: dip.y } : slot.indexDip;
+            slot.wrist = wrist ? { x: wrist.x, y: wrist.y } : null;
+            slot.middleMcp = middleMcp ? { x: middleMcp.x, y: middleMcp.y } : null;
+            slot.ringMcp = ringMcp ? { x: ringMcp.x, y: ringMcp.y } : null;
             slotsRef.current[i] = slot;
           }
         });
@@ -143,7 +166,7 @@ export function useHandsTracking({
         const message =
           err instanceof Error ? err.message : "Could not start hand tracking.";
         setError(message);
-        onError?.(message);
+        onErrorRef.current?.(message);
       }
     }
 
@@ -153,11 +176,24 @@ export function useHandsTracking({
       active = false;
       camera?.stop?.();
       hands?.close?.();
+
+      // Release the camera stream tracks explicitly to prevent lock conflict on next slide mounts
+      if (videoEl && videoEl.srcObject) {
+        try {
+          const stream = videoEl.srcObject as MediaStream;
+          const tracks = stream.getTracks ? stream.getTracks() : [];
+          tracks.forEach((track) => track.stop());
+        } catch (e) {
+          console.warn("Failed to stop media stream tracks:", e);
+        }
+        videoEl.srcObject = null;
+      }
+
       setReady(false);
       setHandCount(0);
       resetSlots();
     };
-  }, [enabled, videoRef, maxHands, onError, resetSlots]);
+  }, [enabled, videoElement, maxHands, resetSlots]);
 
   const getSwordPoses = useCallback((): SwordPose[] => {
     const poses: SwordPose[] = [];
@@ -169,6 +205,10 @@ export function useHandsTracking({
     return poses;
   }, []);
 
+  const getHandPoses = useCallback((): HandSlot[] => {
+    return slotsRef.current.map((s) => ({ ...s }));
+  }, []);
+
   return {
     bindVideoRef,
     handCount,
@@ -176,5 +216,6 @@ export function useHandsTracking({
     ready,
     error,
     getSwordPoses,
+    getHandPoses,
   };
 }

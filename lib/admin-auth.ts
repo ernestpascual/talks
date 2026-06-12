@@ -39,10 +39,12 @@ export function login(password: string): boolean {
 
   const session: AdminSession = { loggedInAt: Date.now() };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+  localStorage.setItem("admin-password", password);
   return true;
 }
 
 export function logout(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem("admin-password");
 }
