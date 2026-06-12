@@ -1,5 +1,10 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextRequest, NextResponse } from "next/server";
+import { createHash } from "node:crypto";
+import {
+  getCacheValue,
+  setCacheValue,
+} from "@/lib/db";
 import type { SurveyInsights } from "@/lib/talks/aerocano/survey-insights";
 
 const SYSTEM_PROMPT = `You are the analytical engine for a real-time Bento UI dashboard. Your task is to analyze incoming batches of user answers to the question "Ano gusto mo sa kape?" (How do you like your coffee?) and translate them into structured insights.
@@ -103,6 +108,10 @@ function parseInsights(text: string): SurveyInsights {
   return JSON.parse(cleaned) as SurveyInsights;
 }
 
+function hashAnswers(answers: string[]) {
+  return createHash("sha256").update(JSON.stringify(answers)).digest("hex");
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { answers } = await request.json();
@@ -130,12 +139,41 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ insights: {} });
     }
 
+    const answersHash = hashAnswers(normalizedAnswers);
+    const hashedCacheKey = `survey:insights:${answersHash}`;
+    const cachedInsights = await getCacheValue(hashedCacheKey);
+
+    if (cachedInsights) {
+      return NextResponse.json({
+        insights: JSON.parse(cachedInsights) as SurveyInsights,
+        cached: true,
+        hash: answersHash,
+      });
+    }
+
+    const latestHash = await getCacheValue("survey:insights:latest_hash");
+    const latestInsights = await getCacheValue("survey:insights:latest");
+
+    if (latestHash === answersHash && latestInsights) {
+      return NextResponse.json({
+        insights: JSON.parse(latestInsights) as SurveyInsights,
+        cached: true,
+        hash: answersHash,
+      });
+    }
+
     const prompt = JSON.stringify(normalizedAnswers);
     const result = await generateWithRetry(prompt);
     const text = result.response.text();
     const insights = parseInsights(text);
 
-    return NextResponse.json({ insights });
+    await Promise.all([
+      setCacheValue(hashedCacheKey, JSON.stringify(insights)),
+      setCacheValue("survey:insights:latest_hash", answersHash),
+      setCacheValue("survey:insights:latest", JSON.stringify(insights)),
+    ]);
+
+    return NextResponse.json({ insights, cached: false, hash: answersHash });
   } catch (error) {
     const message = error instanceof Error ? error.message : "An error occurred";
     console.error("Gemini API Error:", error);

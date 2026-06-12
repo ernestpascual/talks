@@ -1,5 +1,6 @@
-const KV_URL = process.env.KV_REST_API_URL;
-const KV_TOKEN = process.env.KV_REST_API_TOKEN;
+const KV_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+const KV_TOKEN =
+  process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
 
 // Local development in-memory store
 const globalRef = global as typeof globalThis & {
@@ -7,6 +8,7 @@ const globalRef = global as typeof globalThis & {
     redirects: Record<string, string>;
     responses: string[];
     scores: Array<{ name: string; score: number; ts: number }>;
+    cache: Record<string, string>;
   };
 };
 
@@ -20,6 +22,7 @@ if (!globalRef.localKVStore) {
       "Gusto ko ng dark chocolate notes.",
     ],
     scores: [] as Array<{ name: string; score: number; ts: number }>,
+    cache: {},
   };
 }
 
@@ -54,10 +57,19 @@ async function runKVCommand<T>(command: string[]): Promise<T | null> {
   const [op, arg1, arg2, arg3] = command;
 
   if (op === "GET") {
-    return (store.redirects[arg1!] || null) as unknown as T;
+    if (arg1?.startsWith("redirect:")) {
+      const redirectSlug = arg1.replace(/^redirect:/, "");
+      return (store.redirects[redirectSlug] || null) as unknown as T;
+    }
+    return (store.cache[arg1!] || null) as unknown as T;
   }
   if (op === "SET") {
-    store.redirects[arg1!] = arg2!;
+    if (arg1?.startsWith("redirect:")) {
+      const redirectSlug = arg1.replace(/^redirect:/, "");
+      store.redirects[redirectSlug] = arg2!;
+    } else {
+      store.cache[arg1!] = arg2!;
+    }
     return "OK" as unknown as T;
   }
   if (op === "RPUSH") {
@@ -78,15 +90,24 @@ async function runKVCommand<T>(command: string[]): Promise<T | null> {
     return list.slice(start, end + 1) as unknown as T;
   }
   if (op === "DEL") {
-    if (arg1 === "aerocano:scores") {
-      store.scores = [];
-      return 1 as unknown as T;
+    let deleted = 0;
+    for (const key of command.slice(1)) {
+      if (key === "aerocano:scores") {
+        store.scores = [];
+        deleted += 1;
+        continue;
+      }
+      if (key === "survey:responses") {
+        store.responses = [];
+        deleted += 1;
+        continue;
+      }
+      if (key in store.cache) {
+        delete store.cache[key];
+        deleted += 1;
+      }
     }
-    if (arg1 === "survey:responses") {
-      store.responses = [];
-      return 1 as unknown as T;
-    }
-    return 0 as unknown as T;
+    return deleted as unknown as T;
   }
 
   return null;
@@ -117,6 +138,21 @@ export async function getResponses(): Promise<string[]> {
 
 export async function clearResponses(): Promise<boolean> {
   const result = await runKVCommand<number>(["DEL", "survey:responses"]);
+  return result !== null;
+}
+
+export async function getCacheValue(key: string): Promise<string | null> {
+  return runKVCommand<string>(["GET", key]);
+}
+
+export async function setCacheValue(key: string, value: string): Promise<boolean> {
+  const result = await runKVCommand<string>(["SET", key, value]);
+  return result === "OK";
+}
+
+export async function deleteCacheKeys(...keys: string[]): Promise<boolean> {
+  if (keys.length === 0) return true;
+  const result = await runKVCommand<number>(["DEL", ...keys]);
   return result !== null;
 }
 

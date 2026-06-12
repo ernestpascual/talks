@@ -205,6 +205,21 @@ function RadarChart({
           const point = toPoint(1, index);
           return <line key={index} x1={center} y1={center} x2={point.x} y2={point.y} stroke="#27272a" />;
         })}
+        {labels.map((label, index) => {
+          const point = toPoint(1.18, index);
+          return (
+            <text
+              key={`${label}-label`}
+              x={point.x}
+              y={point.y}
+              textAnchor={point.x < center - 8 ? "end" : point.x > center + 8 ? "start" : "middle"}
+              dominantBaseline={point.y < center - 8 ? "alphabetic" : point.y > center + 8 ? "hanging" : "middle"}
+              className="fill-zinc-400 text-[7px] font-medium"
+            >
+              {label}
+            </text>
+          );
+        })}
         <polygon points={polygon} fill="rgba(245,158,11,0.22)" stroke="#f59e0b" strokeWidth="3" />
         {values.map((value, index) => {
           const point = toPoint(value / maxValue, index);
@@ -300,6 +315,34 @@ function PairBars({
               className={`h-full rounded-full ${colors[index]}`}
               style={{ width: `${percentages[index]}%` }}
             />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PulseBars({
+  values,
+  labels,
+}: {
+  values: number[];
+  labels: string[];
+}) {
+  const maxValue = Math.max(...values, 1);
+  return (
+    <div className="flex h-full items-end gap-3">
+      {values.map((value, index) => (
+        <div key={labels[index]} className="flex flex-1 flex-col items-center gap-2">
+          <div className="text-xs font-mono text-zinc-300">{value}</div>
+          <div className="flex h-24 w-full items-end rounded-2xl bg-zinc-900/70 p-1">
+            <div
+              className="w-full rounded-xl bg-gradient-to-t from-amber-500 via-orange-400 to-yellow-200"
+              style={{ height: `${Math.max(16, (value / maxValue) * 100)}%` }}
+            />
+          </div>
+          <div className="text-[10px] uppercase tracking-[0.22em] text-zinc-500">
+            {labels[index]}
           </div>
         </div>
       ))}
@@ -429,6 +472,13 @@ export default function Slide6SurveyBento({ text }: { text: string }) {
         value: Math.max(5 - index, 1),
       }))
     : null;
+  const pulseMetricValues = [
+    responses.length,
+    insights.kahit_ano_counter ?? 0,
+    insights.hugot_detector ? 1 : 0,
+    visibleWidgets,
+  ];
+  const pulseMetricLabels = ["Answers", "Kahit", "Hugot", "Widgets"];
 
   return (
     <div className="relative flex min-h-screen w-full flex-col bg-black text-left text-white animate-fade-in">
@@ -505,26 +555,43 @@ export default function Slide6SurveyBento({ text }: { text: string }) {
 
         <div className="grid flex-1 min-h-0 grid-cols-1 gap-4 xl:grid-cols-12 xl:grid-rows-6">
           <SurveyCard className="xl:col-span-4 xl:row-span-2" eyebrow="Pulse" title="Room Snapshot">
-            <div className="flex h-full flex-col justify-between gap-6">
-              <div className="flex items-end justify-between gap-4">
-                <div>
-                  <p className="text-6xl font-black tracking-tight text-white">{responses.length}</p>
-                  <p className="mt-2 text-sm text-zinc-400">answers in the current batch</p>
+            <div className="grid h-full min-h-0 grid-cols-[1.2fr_0.9fr] gap-5">
+              <div className="flex min-h-0 flex-col justify-between gap-4">
+                <div className="flex items-end justify-between gap-4">
+                  <div>
+                    <p className="text-6xl font-black tracking-tight text-white">{responses.length}</p>
+                    <p className="mt-2 text-sm text-zinc-400">answers in the current batch</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-6xl">{insights.vibe_check_emoji || "☕"}</p>
+                    <p className="mt-2 text-xs uppercase tracking-[0.28em] text-zinc-500">
+                      vibe check
+                    </p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-6xl">{insights.vibe_check_emoji || "☕"}</p>
-                  <p className="mt-2 text-xs uppercase tracking-[0.28em] text-zinc-500">
-                    vibe check
-                  </p>
+                <div className="flex-1">
+                  <PulseBars values={pulseMetricValues} labels={pulseMetricLabels} />
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <span className="rounded-full border border-zinc-800 px-3 py-1 text-xs text-zinc-300">
-                  {visibleWidgets} insight widgets active
-                </span>
-                <span className="rounded-full border border-zinc-800 px-3 py-1 text-xs text-zinc-300">
-                  {insightsLoading ? "Gemini refreshing" : "Gemini synced"}
-                </span>
+              <div className="flex min-h-0 flex-col gap-3">
+                <div className="rounded-2xl border border-zinc-900 bg-black/25 p-4">
+                  <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">Live State</p>
+                  <p className="mt-2 text-2xl font-black text-white">
+                    {insightsLoading ? "Refreshing" : "Synced"}
+                  </p>
+                </div>
+                <div className="grid flex-1 grid-cols-2 gap-3">
+                  <div className="rounded-2xl border border-zinc-900 bg-black/25 p-4">
+                    <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">Widgets</p>
+                    <p className="mt-2 text-3xl font-black text-white">{visibleWidgets}</p>
+                  </div>
+                  <div className="rounded-2xl border border-zinc-900 bg-black/25 p-4">
+                    <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">Mood</p>
+                    <p className="mt-2 text-3xl font-black text-white">
+                      {insights.hugot_detector ? "Hugot" : "Chill"}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </SurveyCard>
@@ -689,25 +756,25 @@ export default function Slide6SurveyBento({ text }: { text: string }) {
             )}
           </SurveyCard>
 
-          <SurveyCard className="xl:col-span-4 xl:row-span-2" eyebrow="Status" title="Gemini">
+          <SurveyCard className="xl:col-span-2 xl:row-span-2" eyebrow="Status" title="Gemini">
             {insightsError ? (
               <p className="text-sm leading-relaxed text-red-300">{insightsError}</p>
             ) : (
               <div className="flex h-full flex-col justify-between gap-4">
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-3">
                   <div className="rounded-2xl border border-zinc-900 bg-black/30 p-4">
                     <p className="text-xs uppercase tracking-[0.28em] text-zinc-500">Engine</p>
-                    <p className="mt-2 text-2xl font-black text-white">
+                    <p className="mt-2 text-xl font-black text-white">
                       {insightsLoading ? "Thinking" : "Ready"}
                     </p>
                   </div>
                   <div className="rounded-2xl border border-zinc-900 bg-black/30 p-4">
                     <p className="text-xs uppercase tracking-[0.28em] text-zinc-500">Widgets</p>
-                    <p className="mt-2 text-2xl font-black text-white">{visibleWidgets}</p>
+                    <p className="mt-2 text-xl font-black text-white">{visibleWidgets}</p>
                   </div>
                 </div>
-                <p className="text-sm leading-relaxed text-zinc-400">
-                  Gemini is reading the current batch and filling only the insights it can support from the answers on screen.
+                <p className="text-xs leading-relaxed text-zinc-400">
+                  Gemini only refreshes when new answers change the batch.
                 </p>
               </div>
             )}

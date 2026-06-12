@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { clearResponses, getResponses, submitResponse } from "@/lib/db";
+import {
+  clearResponses,
+  deleteCacheKeys,
+  getCacheValue,
+  getResponses,
+  submitResponse,
+} from "@/lib/db";
 
 export async function GET() {
   const list = await getResponses();
@@ -37,7 +43,15 @@ export async function DELETE(request: NextRequest) {
   }
 
   const ok = await clearResponses();
-  return NextResponse.json({ success: ok });
+  const latestHash = await getCacheValue("survey:insights:latest_hash");
+  const cacheKeys = ["survey:insights:latest_hash", "survey:insights:latest"];
+
+  if (latestHash) {
+    cacheKeys.push(`survey:insights:${latestHash}`);
+  }
+
+  const cacheCleared = await deleteCacheKeys(...cacheKeys);
+  return NextResponse.json({ success: ok && cacheCleared });
 }
 
 export const dynamic = "force-dynamic";
