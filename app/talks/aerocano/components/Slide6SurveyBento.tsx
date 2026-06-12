@@ -355,7 +355,7 @@ function PulseBars({
       {values.map((value, index) => (
         <div key={labels[index]} className="flex flex-1 flex-col items-center gap-2">
           <div className="text-xs font-mono text-zinc-300">{value}</div>
-          <div className="flex h-24 w-full items-end rounded-2xl bg-zinc-900/70 p-1">
+          <div className="flex h-32 w-full items-end rounded-2xl bg-zinc-900/70 p-1">
             <div
               className="w-full rounded-xl bg-gradient-to-t from-amber-500 via-orange-400 to-yellow-200"
               style={{ height: `${Math.max(16, (value / maxValue) * 100)}%` }}
@@ -543,9 +543,8 @@ export default function Slide6SurveyBento({ text }: { text: string }) {
     responses.length,
     insights.kahit_ano_counter ?? 0,
     insights.hugot_detector ? 1 : 0,
-    visibleWidgets,
   ];
-  const pulseMetricLabels = ["Answers", "Kahit", "Hugot", "Widgets"];
+  const pulseMetricLabels = ["Answers", "Kahit", "Hugot"];
   const calculatedChaoticOrder =
     responses.length > 0
       ? responses.reduce((currentBest, answer) =>
@@ -629,7 +628,7 @@ export default function Slide6SurveyBento({ text }: { text: string }) {
 
         <div className="grid flex-1 min-h-0 grid-cols-1 gap-4 xl:grid-cols-12 xl:grid-rows-6">
           <SurveyCard className="xl:col-span-4 xl:row-span-2" eyebrow="Pulse" title="Room Snapshot">
-            <div className="grid h-full min-h-0 grid-cols-[1.2fr_0.9fr] gap-5">
+            <div className="grid h-full min-h-0 grid-cols-[1.65fr_0.72fr] gap-4">
               <div className="flex min-h-0 flex-col justify-between gap-4">
                 <div className="flex items-end justify-between gap-4">
                   <div>
@@ -647,21 +646,17 @@ export default function Slide6SurveyBento({ text }: { text: string }) {
                   <PulseBars values={pulseMetricValues} labels={pulseMetricLabels} />
                 </div>
               </div>
-              <div className="flex min-h-0 flex-col gap-3">
-                <div className="rounded-2xl border border-zinc-900 bg-black/25 p-4">
-                  <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">Live State</p>
-                  <p className="mt-2 text-2xl font-black text-white">
+              <div className="flex min-h-0 flex-col gap-2">
+                <div className="rounded-2xl border border-zinc-900 bg-black/25 p-3">
+                  <p className="text-[9px] uppercase tracking-[0.2em] text-zinc-500">Live State</p>
+                  <p className="mt-1.5 break-words text-xl font-black leading-tight text-white">
                     {insightsLoading ? "Refreshing" : "Synced"}
                   </p>
                 </div>
-                <div className="grid flex-1 grid-cols-2 gap-3">
-                  <div className="rounded-2xl border border-zinc-900 bg-black/25 p-4">
-                    <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">Widgets</p>
-                    <p className="mt-2 text-3xl font-black text-white">{visibleWidgets}</p>
-                  </div>
-                  <div className="rounded-2xl border border-zinc-900 bg-black/25 p-4">
-                    <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">Mood</p>
-                    <p className="mt-2 text-3xl font-black text-white">
+                <div className="grid flex-1 grid-cols-1 gap-2">
+                  <div className="flex min-w-0 flex-1 flex-col justify-between rounded-2xl border border-zinc-900 bg-black/25 p-3">
+                    <p className="text-[9px] uppercase tracking-[0.2em] text-zinc-500">Mood</p>
+                    <p className="mt-2 break-words text-2xl font-black leading-tight text-white">
                       {insights.hugot_detector ? "Hugot" : "Chill"}
                     </p>
                   </div>
