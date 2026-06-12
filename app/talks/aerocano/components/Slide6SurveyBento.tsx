@@ -106,9 +106,11 @@ function Meter({
 function LineGraph({
   labels,
   values,
+  caption,
 }: {
   labels: string[];
   values: number[];
+  caption?: string;
 }) {
   const width = 320;
   const height = 150;
@@ -124,7 +126,10 @@ function LineGraph({
 
   return (
     <div className="flex h-full flex-col gap-3">
-      <svg viewBox={`0 0 ${width} ${height}`} className="h-32 w-full">
+      {caption ? (
+        <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">{caption}</p>
+      ) : null}
+      <svg viewBox={`0 0 ${width} ${height}`} className="min-h-0 flex-1 w-full">
         {[0.25, 0.5, 0.75].map((ratio) => {
           const y = height - padding - ratio * (height - padding * 2);
           return (
@@ -144,6 +149,14 @@ function LineGraph({
           <g key={point.label}>
             <circle cx={point.x} cy={point.y} r="5" fill="#f59e0b" />
             <circle cx={point.x} cy={point.y} r="10" fill="rgba(245,158,11,0.15)" />
+            <text
+              x={point.x}
+              y={point.y - 14}
+              textAnchor="middle"
+              className="fill-zinc-200 text-[9px] font-semibold"
+            >
+              {point.value}
+            </text>
           </g>
         ))}
       </svg>
@@ -162,13 +175,15 @@ function LineGraph({
 function RadarChart({
   labels,
   values,
+  descriptions,
 }: {
   labels: string[];
   values: number[];
+  descriptions: string[];
 }) {
-  const size = 220;
+  const size = 260;
   const center = size / 2;
-  const radius = 74;
+  const radius = 88;
   const maxValue = Math.max(...values, 1);
   const angleStep = (Math.PI * 2) / labels.length;
   const toPoint = (ratio: number, index: number) => {
@@ -186,8 +201,8 @@ function RadarChart({
     .join(" ");
 
   return (
-    <div className="flex h-full items-center gap-4">
-      <svg viewBox={`0 0 ${size} ${size}`} className="h-44 w-44 shrink-0">
+    <div className="grid h-full min-h-0 grid-cols-[1fr_40%] items-center gap-4">
+      <svg viewBox={`0 0 ${size} ${size}`} className="h-full min-h-0 w-full">
         {[0.25, 0.5, 0.75, 1].map((ratio) => (
           <polygon
             key={ratio}
@@ -226,11 +241,16 @@ function RadarChart({
           return <circle key={labels[index]} cx={point.x} cy={point.y} r="4" fill="#fde68a" />;
         })}
       </svg>
-      <div className="min-w-0 flex-1 space-y-2">
+      <div className="min-h-0 min-w-0 space-y-1.5 overflow-y-auto">
         {labels.map((label, index) => (
-          <div key={label} className="flex items-center justify-between gap-3 rounded-xl border border-zinc-900 bg-black/20 px-3 py-2 text-sm">
-            <span className="truncate text-zinc-300">{label}</span>
-            <span className="font-mono text-zinc-100">{values[index]}</span>
+          <div key={label} className="rounded-xl border border-zinc-900 bg-black/20 px-2.5 py-2">
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <span className="truncate font-semibold text-zinc-200">{label}</span>
+              <span className="font-mono text-zinc-100">{values[index]}</span>
+            </div>
+            <p className="mt-1 text-[10px] leading-snug text-zinc-500">
+              {descriptions[index]}
+            </p>
           </div>
         ))}
       </div>
@@ -350,6 +370,48 @@ function PulseBars({
   );
 }
 
+const ARCHETYPE_DESCRIPTIONS: Record<string, string> = {
+  Purist: "Plain, black, brewed, or no-sugar coffee.",
+  Alchemist: "Specific build with milk, pumps, or custom rules.",
+  Hustler: "Strong coffee for energy and alertness.",
+  "Comfort Seeker": "Sweet, creamy, familiar, or dessert-like coffee.",
+  Aesthetician: "Trendy cafe orders and photogenic drinks.",
+};
+
+function scoreChaoticOrder(answer: string) {
+  const normalized = answer.toLowerCase();
+  const chaosKeywords = [
+    "matcha",
+    "oat",
+    "foam",
+    "pump",
+    "dirty",
+    "spanish",
+    "caramel",
+    "mocha",
+    "syrup",
+    "extra",
+    "shot",
+    "salt",
+    "cheese",
+    "weird",
+    "kahit",
+    "libre",
+    "pagmamahal",
+    "ipaglaban",
+    "nanlalamig",
+  ];
+  const keywordScore = chaosKeywords.reduce(
+    (score, keyword) => score + (normalized.includes(keyword) ? 4 : 0),
+    0,
+  );
+  const punctuationScore = (answer.match(/[!?.,]/g) ?? []).length;
+  const lengthScore = Math.min(answer.length / 18, 8);
+  const wordScore = Math.min(answer.trim().split(/\s+/).length / 2, 8);
+
+  return keywordScore + punctuationScore + lengthScore + wordScore;
+}
+
 export default function Slide6SurveyBento({ text }: { text: string }) {
   const [responses, setResponses] = useState<string[]>([]);
   const [insights, setInsights] = useState<SurveyInsights>({});
@@ -466,6 +528,11 @@ export default function Slide6SurveyBento({ text }: { text: string }) {
   const radarEntries = insights.archetype_leaderboard
     ? Object.entries(insights.archetype_leaderboard)
     : null;
+  const archetypeLabels = radarEntries?.map(([label]) => label.replace("The ", "")) ?? [];
+  const archetypeValues = radarEntries?.map(([, value]) => value) ?? [];
+  const archetypeDescriptions = archetypeLabels.map(
+    (label) => ARCHETYPE_DESCRIPTIONS[label] ?? "Coffee preference cluster.",
+  );
   const whyCloudItems = insights.the_why_cloud?.length
     ? insights.the_why_cloud.map((word, index) => ({
         label: word,
@@ -479,26 +546,33 @@ export default function Slide6SurveyBento({ text }: { text: string }) {
     visibleWidgets,
   ];
   const pulseMetricLabels = ["Answers", "Kahit", "Hugot", "Widgets"];
+  const calculatedChaoticOrder =
+    responses.length > 0
+      ? responses.reduce((currentBest, answer) =>
+          scoreChaoticOrder(answer) > scoreChaoticOrder(currentBest) ? answer : currentBest,
+        )
+      : "";
+  const chaoticOrder = insights.weirdest_order || calculatedChaoticOrder;
 
   return (
     <div className="relative flex min-h-screen w-full flex-col bg-black text-left text-white animate-fade-in">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(245,158,11,0.16),_transparent_30%),radial-gradient(circle_at_top_right,_rgba(59,130,246,0.12),_transparent_28%),linear-gradient(180deg,rgba(24,24,27,0.88),rgba(0,0,0,1))]" />
 
-      <div className="relative z-10 flex items-start justify-between gap-6 px-8 pt-8">
+      <div className="relative z-10 flex items-start justify-between gap-6 px-8 pt-6">
         <SlideCornerLink url={surveyUrl} />
         <SlideCornerQr url={surveyUrl} />
       </div>
 
-      <div className="relative z-10 flex flex-1 flex-col px-8 pb-8 pt-6">
-        <div className="mb-6 flex items-start justify-between gap-6">
+      <div className="relative z-10 flex flex-1 flex-col px-8 pb-6 pt-4">
+        <div className="mb-4 flex items-start justify-between gap-6">
           <div>
             <span className="text-xs font-bold uppercase tracking-[0.28em] text-amber-500">
               Live Survey Bento
             </span>
-            <h2 className="mt-3 text-4xl font-extrabold tracking-tight text-white leading-tight">
+            <h2 className="mt-2 text-4xl font-extrabold tracking-tight text-white leading-tight">
               {text}
             </h2>
-            <p className="mt-3 max-w-3xl text-sm font-light leading-relaxed text-zinc-400">
+            <p className="mt-2 max-w-3xl text-sm font-light leading-relaxed text-zinc-400">
               Scan the QR code, send your answer, and Gemini will turn the batch into a live Bento dashboard.
             </p>
           </div>
@@ -617,6 +691,7 @@ export default function Slide6SurveyBento({ text }: { text: string }) {
             {hotIcedValues && plainMixedValues ? (
               <LineGraph
                 labels={["Hot", "Iced", "Plain", "Mixed"]}
+                caption="Temperature and coffee-build signals"
                 values={[
                   hotIcedValues[0],
                   hotIcedValues[1],
@@ -650,18 +725,19 @@ export default function Slide6SurveyBento({ text }: { text: string }) {
             )}
           </SurveyCard>
 
-          <SurveyCard className="xl:col-span-5 xl:row-span-2" eyebrow="People" title="Archetype Leaderboard">
+          <SurveyCard className="xl:col-span-6 xl:row-span-2" eyebrow="People" title="Archetype Leaderboard">
             {radarEntries ? (
               <RadarChart
-                labels={radarEntries.map(([label]) => label.replace("The ", ""))}
-                values={radarEntries.map(([, value]) => value)}
+                labels={archetypeLabels}
+                values={archetypeValues}
+                descriptions={archetypeDescriptions}
               />
             ) : (
               <EmptyState label="Archetypes will rank here once Gemini can classify enough answers." />
             )}
           </SurveyCard>
 
-          <SurveyCard className="xl:col-span-4 xl:row-span-2" eyebrow="Language" title="Why Cloud">
+          <SurveyCard className="xl:col-span-3 xl:row-span-2" eyebrow="Language" title="Why Cloud">
             {whyCloudItems ? (
               <div className="flex min-h-0 flex-1 flex-col gap-3">
                 <div className="min-h-0 flex-1">
@@ -684,10 +760,20 @@ export default function Slide6SurveyBento({ text }: { text: string }) {
           </SurveyCard>
 
           <SurveyCard className="xl:col-span-3 xl:row-span-2" eyebrow="Chaos" title="Weirdest Order">
-            {insights.weirdest_order ? (
-              <blockquote className="text-xl font-medium leading-relaxed text-zinc-100">
-                “{insights.weirdest_order}”
-              </blockquote>
+            {chaoticOrder ? (
+              <div className="flex h-full flex-col justify-between gap-4">
+                <blockquote className="min-h-0 overflow-y-auto text-xl font-medium leading-relaxed text-zinc-100">
+                  &quot;{chaoticOrder}&quot;
+                </blockquote>
+                <div className="rounded-2xl border border-zinc-900 bg-black/25 p-3">
+                  <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                    Chaos Score
+                  </p>
+                  <p className="mt-1 font-mono text-2xl font-black text-amber-300">
+                    {Math.round(scoreChaoticOrder(chaoticOrder))}
+                  </p>
+                </div>
+              </div>
             ) : (
               <EmptyState label="The most chaotic coffee order in the room will land here." />
             )}
@@ -732,7 +818,7 @@ export default function Slide6SurveyBento({ text }: { text: string }) {
             </div>
           </SurveyCard>
 
-          <SurveyCard className="xl:col-span-5 xl:row-span-2" eyebrow="Feed" title="Latest Answers">
+          <SurveyCard className="xl:col-span-7 xl:row-span-2" eyebrow="Feed" title="Latest Answers">
             {responses.length === 0 ? (
               <div className="flex h-full min-h-44 flex-col items-center justify-center gap-3 rounded-3xl border border-dashed border-zinc-800 text-center text-zinc-600">
                 <span className="text-3xl">☕</span>
