@@ -51,7 +51,7 @@ async function runKVCommand<T>(command: string[]): Promise<T | null> {
 
   // Fallback to in-memory store
   const store = globalRef.localKVStore!;
-  const [op, arg1, arg2, arg3, arg4] = command;
+  const [op, arg1, arg2, arg3] = command;
 
   if (op === "GET") {
     return (store.redirects[arg1!] || null) as unknown as T;
@@ -82,6 +82,10 @@ async function runKVCommand<T>(command: string[]): Promise<T | null> {
       store.scores = [];
       return 1 as unknown as T;
     }
+    if (arg1 === "survey:responses") {
+      store.responses = [];
+      return 1 as unknown as T;
+    }
     return 0 as unknown as T;
   }
 
@@ -109,6 +113,11 @@ export async function submitResponse(text: string): Promise<boolean> {
 export async function getResponses(): Promise<string[]> {
   const result = await runKVCommand<string[]>(["LRANGE", "survey:responses", "0", "-1"]);
   return result || [];
+}
+
+export async function clearResponses(): Promise<boolean> {
+  const result = await runKVCommand<number>(["DEL", "survey:responses"]);
+  return result !== null;
 }
 
 export type ScoreEntry = { name: string; score: number; ts: number };

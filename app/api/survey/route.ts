@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getResponses, submitResponse } from "@/lib/db";
+import { clearResponses, getResponses, submitResponse } from "@/lib/db";
 
 export async function GET() {
   const list = await getResponses();
@@ -17,12 +17,27 @@ export async function POST(request: NextRequest) {
     }
     const ok = await submitResponse(text);
     return NextResponse.json({ success: ok });
-  } catch (err) {
+  } catch {
     return NextResponse.json(
       { success: false, error: "Invalid request" },
       { status: 400 },
     );
   }
+}
+
+export async function DELETE(request: NextRequest) {
+  const adminPassword = request.headers.get("x-admin-password");
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "aerocano2025";
+
+  if (adminPassword !== ADMIN_PASSWORD) {
+    return NextResponse.json(
+      { success: false, error: "Unauthorized" },
+      { status: 401 },
+    );
+  }
+
+  const ok = await clearResponses();
+  return NextResponse.json({ success: ok });
 }
 
 export const dynamic = "force-dynamic";

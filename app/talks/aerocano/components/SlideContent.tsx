@@ -4,34 +4,14 @@ import { useEffect, useState, useCallback } from "react";
 import type { Slide } from "@/lib/talks/aerocano/slides";
 import Slide4CoffeePour from "./Slide4CoffeePour";
 import Slide5AerocanoMake from "./Slide5AerocanoMake";
+import Slide6SurveyBento from "./Slide6SurveyBento";
+import { SlideCornerLink, SlideCornerQr } from "./SlideCornerChrome";
 
 type ScoreEntry = { name: string; score: number; ts: number };
 
 type SlideContentProps = {
   slide: Slide;
 };
-
-// Real scannable QR code using qrserver.com API
-function AestheticQrCode({ url }: { url: string }) {
-  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(url)}&size=400x400&margin=10&color=000000&bgcolor=ffffff&format=png`;
-  return (
-    <div className="flex flex-col items-center gap-4 bg-zinc-900 border border-zinc-800 rounded-3xl p-6 shadow-2xl">
-      <div className="bg-white p-3 rounded-2xl w-48 h-48 flex items-center justify-center shadow-inner">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={qrSrc}
-          alt={`QR code for ${url}`}
-          width={180}
-          height={180}
-          className="w-full h-full object-contain"
-        />
-      </div>
-      <div className="text-center font-mono text-xs text-zinc-400 mt-1 select-all">
-        {url}
-      </div>
-    </div>
-  );
-}
 
 const MEDAL = ["🥇", "🥈", "🥉"];
 
@@ -51,9 +31,14 @@ function ShakeItSlide({ text }: { text: string }) {
   }, []);
 
   useEffect(() => {
-    fetchScores();
+    const initialFetch = window.setTimeout(() => {
+      void fetchScores();
+    }, 0);
     const iv = setInterval(fetchScores, 3000);
-    return () => clearInterval(iv);
+    return () => {
+      clearTimeout(initialFetch);
+      clearInterval(iv);
+    };
   }, [fetchScores]);
 
   const handleClear = async () => {
@@ -81,32 +66,36 @@ function ShakeItSlide({ text }: { text: string }) {
     }
   };
 
+  const gameUrl = "https://talks.ernestpascual.com/experience/aerocano-shake";
+
   return (
-    <div className="flex min-h-screen flex-col md:flex-row items-stretch bg-black text-left w-full animate-fade-in">
-      {/* Left: QR + title */}
-      <div className="flex-1 flex flex-col justify-center px-16 py-12 space-y-6 border-r border-zinc-900 bg-zinc-950/20 backdrop-blur">
-        <span className="text-xs font-bold uppercase tracking-widest text-amber-500">Interactive Game</span>
-        <h2 className="text-5xl font-black tracking-tight text-zinc-100 uppercase">
-          {text}
-        </h2>
-        <p className="text-sm text-zinc-400 font-light leading-relaxed max-w-md">
-          Scan the QR code and shake your phone as fast as you can in 15 seconds. Submit your score and see where you rank!
-        </p>
-        <div className="pt-4">
-          <AestheticQrCode url="https://talks.ernestpascual.com/experience/aerocano-shake" />
-        </div>
+    <div className="relative flex min-h-screen w-full flex-col bg-black text-left text-white animate-fade-in">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(245,158,11,0.12),_transparent_36%),linear-gradient(180deg,rgba(24,24,27,0.9),rgba(0,0,0,1))]" />
+
+      <div className="relative z-10 flex items-start justify-between gap-6 px-8 pt-8">
+        <SlideCornerLink url={gameUrl} />
+        <SlideCornerQr url={gameUrl} />
       </div>
 
-      {/* Right: Leaderboard */}
-      <div className="w-full md:w-[500px] bg-zinc-950 flex flex-col p-12 justify-center">
+      <div className="relative z-10 flex flex-1 flex-col px-8 pb-8 pt-6">
         <div className="flex justify-between items-center mb-6">
-          <span className="text-xs font-bold uppercase tracking-widest text-zinc-500">Leaderboard</span>
+          <div>
+            <span className="text-xs font-bold uppercase tracking-[0.28em] text-amber-500">
+              Interactive Game
+            </span>
+            <h2 className="mt-3 text-5xl font-black uppercase tracking-tight text-zinc-100">
+              {text}
+            </h2>
+            <p className="mt-3 max-w-3xl text-sm font-light leading-relaxed text-zinc-400">
+              Scan the QR code and shake your phone as fast as you can in 15 seconds. Submit your score and see where you rank.
+            </p>
+          </div>
           <span className="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 text-[10px] font-bold animate-pulse uppercase tracking-wider">
             Live
           </span>
         </div>
 
-        <div className="flex-1 flex flex-col gap-3 max-h-[55vh] overflow-y-auto pr-1">
+        <div className="flex-1 flex flex-col gap-3 overflow-y-auto rounded-[2rem] border border-zinc-900 bg-zinc-950/75 p-6 shadow-[0_20px_80px_rgba(0,0,0,0.35)]">
           {scores.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center text-zinc-600 gap-3 border border-dashed border-zinc-800 rounded-3xl p-8">
               <span className="text-3xl animate-bounce">☕</span>
@@ -143,7 +132,6 @@ function ShakeItSlide({ text }: { text: string }) {
           )}
         </div>
 
-        {/* Clear section */}
         <div className="mt-6 pt-4 border-t border-zinc-900">
           {!showPwPrompt ? (
             <button
@@ -189,35 +177,6 @@ function ShakeItSlide({ text }: { text: string }) {
 }
 
 export default function SlideContent({ slide }: SlideContentProps) {
-  const [origin, setOrigin] = useState("");
-  const [responses, setResponses] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setOrigin(window.location.origin);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (slide.kind !== "qr-code") return;
-
-    async function fetchResponses() {
-      try {
-        const res = await fetch("/api/survey");
-        const data = await res.json();
-        if (data.success && data.list) {
-          setResponses(data.list);
-        }
-      } catch (err) {
-        console.error("Failed to fetch survey responses:", err);
-      }
-    }
-
-    fetchResponses();
-    const interval = setInterval(fetchResponses, 2500);
-    return () => clearInterval(interval);
-  }, [slide.kind]);
-
   const containerClass =
     "flex min-h-screen flex-col items-center justify-center px-12 py-20 text-center animate-fade-in";
 
@@ -311,54 +270,7 @@ export default function SlideContent({ slide }: SlideContentProps) {
       return <Slide5AerocanoMake />;
 
     case "qr-code":
-      return (
-        <div className="flex min-h-screen flex-col md:flex-row items-stretch bg-black text-left w-full animate-fade-in">
-          {/* Left panel: Info & QR */}
-          <div className="flex-1 flex flex-col justify-center px-16 py-12 space-y-6 border-r border-zinc-900 bg-zinc-950/20 backdrop-blur">
-            <span className="text-xs font-bold uppercase tracking-widest text-amber-500">Live Survey Feedback</span>
-            <h2 className="text-4xl font-extrabold tracking-tight text-white leading-tight">
-              {slide.text}
-            </h2>
-            <p className="text-sm text-zinc-400 font-light leading-relaxed max-w-md">
-              Scan the QR code to submit what you look for in coffee. Your responses will appear here in real-time!
-            </p>
-            <div className="pt-4">
-              <AestheticQrCode url="https://talks.ernestpascual.com/experience/aerocano-shake" />
-            </div>
-          </div>
-
-          {/* Right panel: Real-time scrolling responses */}
-          <div className="w-full md:w-[500px] bg-zinc-950 flex flex-col p-12 justify-center">
-            <div className="flex justify-between items-center mb-6">
-              <span className="text-xs font-bold uppercase tracking-widest text-zinc-500">Audience Answers</span>
-              <span className="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 text-[10px] font-bold animate-pulse uppercase tracking-wider">
-                Live
-              </span>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto pr-2 flex flex-col gap-4 max-h-[60vh] scrollbar-thin">
-              {responses.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center text-center text-zinc-600 gap-3 border border-dashed border-zinc-800 rounded-3xl p-6">
-                  <span className="text-3xl animate-bounce">☕</span>
-                  <p className="text-xs font-light">Waiting for responses...</p>
-                </div>
-              ) : (
-                responses.slice().reverse().map((text, idx) => (
-                  <div
-                    key={idx}
-                    className="p-5 rounded-2xl border border-zinc-850 bg-zinc-900/30 backdrop-blur shadow-md animate-slide-up flex gap-3.5 items-start"
-                  >
-                    <span className="text-base mt-0.5">☕</span>
-                    <p className="text-sm text-zinc-300 font-light leading-relaxed">
-                      {text}
-                    </p>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      );
+      return <Slide6SurveyBento text={slide.text} />;
 
     case "shake-it": {
       return <ShakeItSlide text={slide.text} />;
