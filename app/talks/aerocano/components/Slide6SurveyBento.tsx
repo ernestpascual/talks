@@ -55,7 +55,7 @@ function Meter({
   return (
     <div className="flex h-full flex-col justify-between gap-4">
       <div className="flex items-center justify-center">
-        <svg viewBox="0 0 160 160" className="h-40 w-40 overflow-visible">
+        <svg viewBox="0 0 160 160" className="mx-auto h-auto max-h-[140px] w-full max-w-[140px] overflow-visible sm:max-h-[160px] sm:max-w-[160px]">
           <defs>
             <linearGradient id="meterGradient" x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" stopColor="#fde68a" />
@@ -129,7 +129,7 @@ function LineGraph({
       {caption ? (
         <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">{caption}</p>
       ) : null}
-      <svg viewBox={`0 0 ${width} ${height}`} className="min-h-0 flex-1 w-full">
+      <svg viewBox={`0 0 ${width} ${height}`} className="min-h-0 flex-1 w-full max-h-[140px]">
         {[0.25, 0.5, 0.75].map((ratio) => {
           const y = height - padding - ratio * (height - padding * 2);
           return (
@@ -160,11 +160,11 @@ function LineGraph({
           </g>
         ))}
       </svg>
-      <div className="grid grid-cols-4 gap-2 text-[11px] uppercase tracking-[0.18em] text-zinc-500">
+      <div className="grid grid-cols-4 gap-1.5 text-[9px] sm:text-[11px] uppercase tracking-wider sm:tracking-[0.18em] text-zinc-500">
         {points.map((point) => (
-          <div key={point.label} className="rounded-xl border border-zinc-900 bg-black/20 px-2 py-2 text-center">
-            <div>{point.label}</div>
-            <div className="mt-1 font-mono text-zinc-200 normal-case tracking-normal">{point.value}</div>
+          <div key={point.label} className="rounded-xl border border-zinc-900 bg-black/20 px-1 py-1.5 sm:px-2 sm:py-2 text-center">
+            <div className="truncate">{point.label}</div>
+            <div className="mt-0.5 font-mono text-zinc-200 normal-case tracking-normal text-xs">{point.value}</div>
           </div>
         ))}
       </div>
@@ -201,54 +201,56 @@ function RadarChart({
     .join(" ");
 
   return (
-    <div className="grid h-full min-h-0 grid-cols-[1fr_40%] items-center gap-4">
-      <svg viewBox={`0 0 ${size} ${size}`} className="h-full min-h-0 w-full">
-        {[0.25, 0.5, 0.75, 1].map((ratio) => (
-          <polygon
-            key={ratio}
-            points={labels
-              .map((_, index) => {
-                const point = toPoint(ratio, index);
-                return `${point.x},${point.y}`;
-              })
-              .join(" ")}
-            fill="none"
-            stroke="#27272a"
-          />
-        ))}
-        {labels.map((_, index) => {
-          const point = toPoint(1, index);
-          return <line key={index} x1={center} y1={center} x2={point.x} y2={point.y} stroke="#27272a" />;
-        })}
-        {labels.map((label, index) => {
-          const point = toPoint(1.18, index);
-          return (
-            <text
-              key={`${label}-label`}
-              x={point.x}
-              y={point.y}
-              textAnchor={point.x < center - 8 ? "end" : point.x > center + 8 ? "start" : "middle"}
-              dominantBaseline={point.y < center - 8 ? "alphabetic" : point.y > center + 8 ? "hanging" : "middle"}
-              className="fill-zinc-400 text-[7px] font-medium"
-            >
-              {label}
-            </text>
-          );
-        })}
-        <polygon points={polygon} fill="rgba(245,158,11,0.22)" stroke="#f59e0b" strokeWidth="3" />
-        {values.map((value, index) => {
-          const point = toPoint(value / maxValue, index);
-          return <circle key={labels[index]} cx={point.x} cy={point.y} r="4" fill="#fde68a" />;
-        })}
-      </svg>
-      <div className="min-h-0 min-w-0 space-y-1.5 overflow-y-auto">
+    <div className="grid h-full min-h-0 grid-cols-1 gap-4 sm:grid-cols-[1.1fr_0.9fr] items-center">
+      <div className="w-full flex justify-center">
+        <svg viewBox={`0 0 ${size} ${size}`} className="mx-auto h-auto max-h-[190px] w-full max-w-[190px] sm:max-h-[220px] sm:max-w-[220px]">
+          {[0.25, 0.5, 0.75, 1].map((ratio) => (
+            <polygon
+              key={ratio}
+              points={labels
+                .map((_, index) => {
+                  const point = toPoint(ratio, index);
+                  return `${point.x},${point.y}`;
+                })
+                .join(" ")}
+              fill="none"
+              stroke="#27272a"
+            />
+          ))}
+          {labels.map((_, index) => {
+            const point = toPoint(1, index);
+            return <line key={index} x1={center} y1={center} x2={point.x} y2={point.y} stroke="#27272a" />;
+          })}
+          {labels.map((label, index) => {
+            const point = toPoint(1.18, index);
+            return (
+              <text
+                key={`${label}-label`}
+                x={point.x}
+                y={point.y}
+                textAnchor={point.x < center - 8 ? "end" : point.x > center + 8 ? "start" : "middle"}
+                dominantBaseline={point.y < center - 8 ? "alphabetic" : point.y > center + 8 ? "hanging" : "middle"}
+                className="fill-zinc-400 text-[7px] font-medium"
+              >
+                {label}
+              </text>
+            );
+          })}
+          <polygon points={polygon} fill="rgba(245,158,11,0.22)" stroke="#f59e0b" strokeWidth="3" />
+          {values.map((value, index) => {
+            const point = toPoint(value / maxValue, index);
+            return <circle key={labels[index]} cx={point.x} cy={point.y} r="4" fill="#fde68a" />;
+          })}
+        </svg>
+      </div>
+      <div className="min-h-0 min-w-0 space-y-1.5 overflow-y-auto max-h-[180px] pr-1 sm:max-h-full">
         {labels.map((label, index) => (
-          <div key={label} className="rounded-xl border border-zinc-900 bg-black/20 px-2.5 py-2">
+          <div key={label} className="rounded-xl border border-zinc-900 bg-black/20 px-2.5 py-1.5">
             <div className="flex items-center justify-between gap-2 text-xs">
               <span className="truncate font-semibold text-zinc-200">{label}</span>
               <span className="font-mono text-zinc-100">{values[index]}</span>
             </div>
-            <p className="mt-1 text-[10px] leading-snug text-zinc-500">
+            <p className="mt-0.5 text-[9px] leading-snug text-zinc-500">
               {descriptions[index]}
             </p>
           </div>
@@ -554,15 +556,15 @@ export default function Slide6SurveyBento({ text }: { text: string }) {
   const chaoticOrder = insights.weirdest_order || calculatedChaoticOrder;
 
   return (
-    <div className="relative flex min-h-screen w-full flex-col bg-black text-left text-white animate-fade-in">
+    <div className="relative flex h-[100dvh] w-full flex-col overflow-y-auto bg-black text-left text-white animate-fade-in xl:h-auto xl:min-h-[100dvh] xl:overflow-visible">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(245,158,11,0.16),_transparent_30%),radial-gradient(circle_at_top_right,_rgba(59,130,246,0.12),_transparent_28%),linear-gradient(180deg,rgba(24,24,27,0.88),rgba(0,0,0,1))]" />
 
-      <div className="relative z-10 flex items-start justify-between gap-6 px-8 pt-6">
+      <div className="relative z-10 hidden lg:flex items-start justify-between gap-6 px-8 pt-6">
         <SlideCornerLink url={surveyUrl} />
         <SlideCornerQr url={surveyUrl} />
       </div>
 
-      <div className="relative z-10 flex flex-1 flex-col px-8 pb-6 pt-4">
+      <div className="relative z-10 flex flex-1 flex-col px-8 pb-24 pt-4 xl:pb-6">
         <div className="mb-4 flex items-start justify-between gap-6">
           <div>
             <span className="text-xs font-bold uppercase tracking-[0.28em] text-amber-500">
@@ -626,17 +628,17 @@ export default function Slide6SurveyBento({ text }: { text: string }) {
           </div>
         </div>
 
-        <div className="grid flex-1 min-h-0 grid-cols-1 gap-4 xl:grid-cols-12 xl:grid-rows-6">
-          <SurveyCard className="xl:col-span-4 xl:row-span-2" eyebrow="Pulse" title="Room Snapshot">
-            <div className="grid h-full min-h-0 grid-cols-[1.65fr_0.72fr] gap-4">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-12 xl:grid-rows-6 xl:flex-1 xl:min-h-0 xl:gap-4">
+          <SurveyCard className="xl:col-span-4 xl:row-span-2 min-h-[320px] xl:min-h-0" eyebrow="Pulse" title="Room Snapshot">
+            <div className="grid h-full min-h-0 grid-cols-1 sm:grid-cols-[1.6fr_0.8fr] gap-4">
               <div className="flex min-h-0 flex-col justify-between gap-4">
                 <div className="flex items-end justify-between gap-4">
                   <div>
-                    <p className="text-6xl font-black tracking-tight text-white">{responses.length}</p>
-                    <p className="mt-2 text-sm text-zinc-400">answers in the current batch</p>
+                    <p className="text-5xl sm:text-6xl font-black tracking-tight text-white">{responses.length}</p>
+                    <p className="mt-2 text-sm text-zinc-400">answers in current batch</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-6xl">{insights.vibe_check_emoji || "☕"}</p>
+                    <p className="text-5xl sm:text-6xl">{insights.vibe_check_emoji || "☕"}</p>
                     <p className="mt-2 text-xs uppercase tracking-[0.28em] text-zinc-500">
                       vibe check
                     </p>
@@ -649,14 +651,14 @@ export default function Slide6SurveyBento({ text }: { text: string }) {
               <div className="flex min-h-0 flex-col gap-2">
                 <div className="rounded-2xl border border-zinc-900 bg-black/25 p-3">
                   <p className="text-[9px] uppercase tracking-[0.2em] text-zinc-500">Live State</p>
-                  <p className="mt-1.5 break-words text-xl font-black leading-tight text-white">
-                    {insightsLoading ? "Refreshing" : "Synced"}
+                  <p className="mt-1 break-words text-lg font-black leading-tight text-white">
+                    {insightsLoading ? "Analyzing" : "Synced"}
                   </p>
                 </div>
                 <div className="grid flex-1 grid-cols-1 gap-2">
                   <div className="flex min-w-0 flex-1 flex-col justify-between rounded-2xl border border-zinc-900 bg-black/25 p-3">
                     <p className="text-[9px] uppercase tracking-[0.2em] text-zinc-500">Mood</p>
-                    <p className="mt-2 break-words text-2xl font-black leading-tight text-white">
+                    <p className="mt-1 break-words text-xl font-black leading-tight text-white">
                       {insights.hugot_detector ? "Hugot" : "Chill"}
                     </p>
                   </div>
@@ -665,7 +667,7 @@ export default function Slide6SurveyBento({ text }: { text: string }) {
             </div>
           </SurveyCard>
 
-          <SurveyCard className="xl:col-span-3 xl:row-span-2" eyebrow="Taste" title="Sweetness Target">
+          <SurveyCard className="xl:col-span-3 xl:row-span-2 min-h-[260px] xl:min-h-0" eyebrow="Taste" title="Sweetness Target">
             {typeof insights.sweetness_target === "number" ? (
               <>
               <p className="text-sm text-zinc-400">average sweetness across the batch</p>
@@ -682,7 +684,7 @@ export default function Slide6SurveyBento({ text }: { text: string }) {
             )}
           </SurveyCard>
 
-          <SurveyCard className="xl:col-span-3 xl:row-span-2" eyebrow="Temperature" title="Hot vs Iced">
+          <SurveyCard className="xl:col-span-3 xl:row-span-2 min-h-[260px] xl:min-h-0" eyebrow="Temperature" title="Hot vs Iced">
             {hotIcedValues && plainMixedValues ? (
               <LineGraph
                 labels={["Hot", "Iced", "Plain", "Mixed"]}
@@ -705,7 +707,7 @@ export default function Slide6SurveyBento({ text }: { text: string }) {
             )}
           </SurveyCard>
 
-          <SurveyCard className="xl:col-span-2 xl:row-span-2" eyebrow="Style" title="Plain vs Mixed">
+          <SurveyCard className="xl:col-span-2 xl:row-span-2 min-h-[180px] xl:min-h-0" eyebrow="Style" title="Plain vs Mixed">
             {insights.purist_vs_mixologist ? (
               <PairBars
                 values={[
@@ -720,7 +722,7 @@ export default function Slide6SurveyBento({ text }: { text: string }) {
             )}
           </SurveyCard>
 
-          <SurveyCard className="xl:col-span-6 xl:row-span-2" eyebrow="People" title="Archetype Leaderboard">
+          <SurveyCard className="xl:col-span-6 xl:row-span-2 min-h-[380px] xl:min-h-0" eyebrow="People" title="Archetype Leaderboard">
             {radarEntries ? (
               <RadarChart
                 labels={archetypeLabels}
@@ -732,7 +734,7 @@ export default function Slide6SurveyBento({ text }: { text: string }) {
             )}
           </SurveyCard>
 
-          <SurveyCard className="xl:col-span-3 xl:row-span-2" eyebrow="Language" title="Why Cloud">
+          <SurveyCard className="xl:col-span-3 xl:row-span-2 min-h-[300px] xl:min-h-0" eyebrow="Language" title="Why Cloud">
             {whyCloudItems ? (
               <div className="flex min-h-0 flex-1 flex-col gap-3">
                 <div className="min-h-0 flex-1">
@@ -754,7 +756,7 @@ export default function Slide6SurveyBento({ text }: { text: string }) {
             )}
           </SurveyCard>
 
-          <SurveyCard className="xl:col-span-3 xl:row-span-2" eyebrow="Chaos" title="Weirdest Order">
+          <SurveyCard className="xl:col-span-3 xl:row-span-2 min-h-[220px] xl:min-h-0" eyebrow="Chaos" title="Weirdest Order">
             {chaoticOrder ? (
               <div className="flex h-full flex-col justify-between gap-4">
                 <blockquote className="min-h-0 overflow-y-auto text-xl font-medium leading-relaxed text-zinc-100">
@@ -774,7 +776,7 @@ export default function Slide6SurveyBento({ text }: { text: string }) {
             )}
           </SurveyCard>
 
-          <SurveyCard className="xl:col-span-3 xl:row-span-2" eyebrow="Signals" title="Side Quests">
+          <SurveyCard className="xl:col-span-3 xl:row-span-2 min-h-[220px] xl:min-h-0" eyebrow="Signals" title="Side Quests">
             <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
               {typeof insights.tito_tita_energy === "number" ? (
                 <div>
@@ -813,7 +815,7 @@ export default function Slide6SurveyBento({ text }: { text: string }) {
             </div>
           </SurveyCard>
 
-          <SurveyCard className="xl:col-span-7 xl:row-span-2" eyebrow="Feed" title="Latest Answers">
+          <SurveyCard className="xl:col-span-7 xl:row-span-2 min-h-[280px] xl:min-h-0" eyebrow="Feed" title="Latest Answers">
             {responses.length === 0 ? (
               <div className="flex h-full min-h-44 flex-col items-center justify-center gap-3 rounded-3xl border border-dashed border-zinc-800 text-center text-zinc-600">
                 <span className="text-3xl">☕</span>
@@ -837,7 +839,7 @@ export default function Slide6SurveyBento({ text }: { text: string }) {
             )}
           </SurveyCard>
 
-          <SurveyCard className="xl:col-span-2 xl:row-span-2" eyebrow="Status" title="Gemini">
+          <SurveyCard className="xl:col-span-2 xl:row-span-2 min-h-[220px] xl:min-h-0" eyebrow="Status" title="Gemini">
             {insightsError ? (
               <p className="text-sm leading-relaxed text-red-300">{insightsError}</p>
             ) : (

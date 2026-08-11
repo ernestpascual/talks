@@ -1,6 +1,6 @@
 "use client";
 
-import ninjaQr from "@/app/talks/raw-school-2026/img/ninja.png";
+
 import {
   FRUIT_COLORS,
   FRUIT_EMOJI,
@@ -28,7 +28,7 @@ import {
   useHandsTracking,
 } from "@/lib/hands/useHandsTracking";
 import { useCallback, useEffect, useRef, useState } from "react";
-import QrOverlay from "./QrOverlay";
+
 
 const GRAVITY = 0.13;
 const SPAWN_MS = 1300;
@@ -300,7 +300,6 @@ export default function Slide9FruitNinja() {
         ) : null}
       </div>
 
-      <QrOverlay image={ninjaQr} ariaLabel="Ninja demo QR code" />
     </div>
   );
 }

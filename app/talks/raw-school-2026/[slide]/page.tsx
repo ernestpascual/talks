@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import RawSchoolMarquee from "../components/RawSchoolMarquee";
+
 import SlideContent from "../components/SlideContent";
 import SlideNavigation from "../components/SlideNavigation";
 import SlidePageNumber from "../components/SlidePageNumber";
@@ -28,11 +28,10 @@ export default async function SlidePage({ params }: PageProps) {
   if (!slide) notFound();
 
   return (
-    <div className="relative min-h-screen">
+    <div className="relative min-h-[100dvh]">
       <SlideContent slide={slide} />
       <SlidePageNumber current={slideNumber} />
       <SlideNavigation current={slideNumber} />
-      <RawSchoolMarquee className="pointer-events-none fixed top-6 left-1/2 z-50 -translate-x-1/2" />
     </div>
   );
 }

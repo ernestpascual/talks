@@ -1357,7 +1357,10 @@ export default function Slide5AerocanoMake() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-black flex flex-col justify-between">
+    <div className="relative min-h-[100dvh] overflow-hidden bg-black flex flex-col justify-between">
+      <div className="absolute inset-0 z-40 flex items-center justify-center bg-black lg:hidden">
+        <p className="text-white text-center text-xl p-6 font-medium">Use desktop to view the experience</p>
+      </div>
       {/* Background camera feed */}
       <video
         ref={bindVideoRef}

@@ -1,13 +1,13 @@
 "use client";
 
-import pricingDemoQr from "@/app/talks/raw-school-2026/img/pricingdemo.png";
+
 import { faceBoundsToScreenStyle } from "@/lib/face-mesh/bounds";
 /** Tune smile tiers: `lib/face-mesh/smile-config.ts` */
 export { SMILE_SENSITIVITY, SMILE_TIER_DISCOUNTS } from "@/lib/face-mesh/smile-config";
 import { useFaceMesh } from "@/lib/face-mesh/useFaceMesh";
 import type { TrackingStatus } from "@/lib/face-mesh/tracking-status";
 import { useCallback, useEffect, useRef, useState } from "react";
-import QrOverlay from "./QrOverlay";
+
 
 const START_PRICE = 100;
 const PRICE_INCREASE_STEP = 0.5;
@@ -227,7 +227,6 @@ export default function Slide6EyeTrack() {
         </div>
       </div>
 
-      <QrOverlay image={pricingDemoQr} ariaLabel="Pricing demo QR code" />
     </div>
   );
 }

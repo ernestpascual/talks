@@ -6,6 +6,8 @@
   <img src="img/aisubstrate.png" alt="AI Substrate" />
   <br />
   <a href="https://talks.ernestpascual.com/talks/raw-school-2026">Raw School 2026</a>
+  <span> &nbsp; | &nbsp; </span>
+  <a href="https://talks.ernestpascual.com/talks/aerocano">Aerocano: Shaking Up Coffee Tech</a>
 </div>
 
 ## Getting Started
@@ -26,71 +28,55 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ## Routes & features
 
-| Route                    | File                         | Description                                                         |
-| ------------------------ | ---------------------------- | ------------------------------------------------------------------- |
-| `/admin`                 | `app/admin/`                 | Password-protected admin area (client-side auth via `localStorage`) |
-| `/talk`                  | `app/talk/page.tsx`          | Index linking to talk decks                                         |
-| `/talks/raw-school-2026` | `app/talks/raw-school-2026/` | **Raw School 2026** slide deck (14 slides)                          |
-| `/experience`            | `app/experience/page.tsx`    | Experience page (placeholder content for now)                       |
+| Route                                  | File                                    | Description                                                             |
+| -------------------------------------- | --------------------------------------- | ----------------------------------------------------------------------- |
+| `/admin`                               | `app/admin/`                            | Password-protected admin menu linking to QR Generator & Aerocano database |
+| `/admin/aerocano`                      | `app/admin/aerocano/`                   | Admin table for live scores and survey responses with clear buttons     |
+| `/talks/raw-school-2026`               | `app/talks/raw-school-2026/`           | **Raw School 2026** slide deck (14 slides)                              |
+| `/talks/aerocano`                      | `app/talks/aerocano/`                   | **Aerocano** interactive slide deck                                     |
+| `/experience/aerocano-survey`          | `app/experience/aerocano-survey/`       | Participant survey input form                                           |
+| `/experience/aerocano-shake`           | `app/experience/aerocano-shake/`        | Handheld device shake-it game experience                                |
+| `/r/[slug]`                            | `app/r/[slug]/route.ts`                 | Dynamic short URL redirects (e.g. `/r/live` -> active slide target)    |
+| `/api/survey`                          | `app/api/survey/route.ts`               | Submit and fetch survey responses                                       |
+| `/api/scores`                          | `app/api/scores/route.ts`               | Submit, fetch, and clear live shake-it scoreboard entries               |
+| `/api/gemini`                          | `app/api/gemini/route.ts`               | Calls Gemini API to analyze survey responses and generate insights      |
 
-Legacy URLs `/talk/raw-school-2026` and `/talk/raw-school-2026/:slide` redirect to `/talks/raw-school-2026/...`.
+## Aerocano Talk Deck (`/talks/aerocano`)
+
+An interactive, multi-slide presentation about coffee tech and the Aerocano build. It integrates live viewer inputs directly onto the presenter screen:
+
+- **Slide 1:** Title slide featuring custom overlays.
+- **Slide 2:** Text-heavy intro with enlarged readability.
+- **Slide 3:** Custom background illustration.
+- **Slide 4:** Coffee pour visualization with sized-up containers.
+- **Slide 5:** Aerocano recipe formulation panel.
+- **Slide 6 (Bento Dashboard):** Live dashboard showing room insights analyzed by Gemini. Refreshes dynamically as responses arrive. Features sweetness meters, archetype charts, and a "why cloud". Layout is fully responsive to support scrolling and clear spacing on mobile devices.
+- **Slide 7 (Leaderboard):** Real-time auto-updating leaderboard displaying the highest scores submitted from the shake experience, alongside a scannable QR code to participate.
+- **Slide 8:** Presentation video showcase with minimal surrounding glows.
+
+## Raw School 2026 Talk Deck (`/talks/raw-school-2026`)
+
+A fullscreen presentation on **AI as creative substrate**—how ideas can be made _of_ AI, not only _by_ AI:
+
+- **Slides:** 14 pages of slides at `/talks/raw-school-2026/[1–14]`.
+- **Slide 1:** Title slide — full-screen image artwork with overlays.
+- **Slide 6 (Smile pricing demo):** Smile detection pricing tier simulator using live face-tracking.
+- **Slide 9 (Fruit Ninja):** Interactive hand-tracking slash game experience.
+- **Other slides:** Feature rich video illustrations, Venn diagrams, polymath framework overlays, and interactive quotes.
+
+## Database & KV Storage (`lib/db.ts`)
+
+The database layer utilizes a single unified abstraction supporting multiple environments:
+
+- **Production (Vercel / Upstash):** If `KV_REST_API_URL` and `KV_REST_API_TOKEN` (or Upstash Redis equivalent env vars) are present, database queries interact directly with the persistent cloud KV store.
+- **Development Fallback:** Locally, it falls back automatically to a global, in-memory cache store that persists until the dev server is restarted.
 
 ### Admin (`/admin`)
 
-- Sign in with a fixed password (see [Changing the admin password](#changing-the-admin-password) below).
+- Sign in with a fixed password (set via the `ADMIN_PASSWORD` environment variable, defaulting to `aerocano2025`).
 - Session is stored in `localStorage` under the key `admin-auth`.
 - Sessions expire **7 days** after login; you must sign in again after that.
 - Use the **Log out** button on the admin page, or call `logout()` from `lib/admin-auth.ts`.
-
-Relevant files:
-
-- `lib/admin-config.ts` — admin password constant (temp/no use yet)
-- `lib/admin-auth.ts` — `login()`, `logout()`, `isAuthenticated()`
-- `app/admin/AdminPage.tsx` — login form and protected UI
-
-**Note:** Admin protection is client-side only. It is suitable for casual access control on a personal site, not for sensitive data.
-
-### Raw School 2026 (`/talks/raw-school-2026`)
-
-A fullscreen presentation on **AI as creative substrate**—how ideas can be made _of_ AI, not only _by_ AI. The deck uses Inter on a black background, with prev/next arrows (middle left/right) and a page number (upper right).
-
-- **Entry:** `/talks/raw-school-2026` redirects to slide 1 (`/talks/raw-school-2026/1`).
-- **Slides:** 14 pages at `/talks/raw-school-2026/[1–14]`.
-- **Content:** `lib/talks/raw-school-2026/slides.ts` — edit titles, bullets, and slide kinds here.
-- **Layout / components:** `app/talks/raw-school-2026/components/` — rendering per slide type (`SlideContent.tsx`).
-
-| #   | What happens                                                                                                                                    |
-| --- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Title slide — full-screen `img/slide1.png` (text baked into artwork)                                                                            |
-| 2   | Creative technologist artwork — `slide2bg.mp4` + `slide2.png`                                                                                   |
-| 3   | Creativity × Technology (Venn diagram)                                                                                                          |
-| 4   | Think in systems — `slide4.png` artwork                                                                                                         |
-| 5   | Where AI comes in — `slide5.png` artwork                                                                                                        |
-| 6   | **Smile pricing demo** — Php 100.00; smile tiers −0.50 / −1 / −1.50 / −2 per second (bigger smile = bigger cut); neutral +0.50/s; 10s countdown |
-| 7   | Use of AI — `slide7.png` artwork                                                                                                                |
-| 8   | Deterministic vs probabilistic — `slide8bg.mp4` + `slide8.png`                                                                                  |
-| 9   | Fruit Ninja — hand-tracked slash game (one hand, asymmetric slices)                                                                             |
-| 10  | AI idea DNA / Krebs cycle — `slide10.png` artwork                                                                                               |
-| 11  | Framework — `slide11.png` artwork                                                                                                               |
-| 12  | Polymath — `slide12.png` artwork                                                                                                                |
-| 13  | Staying ethical and safe — `slide13bg.mp4` + `slide13.png`                                                                                      |
-| 14  | Tolstoy quote — `slide14bg.mp4` + `slide14.png`                                                                                                 |
-
-Slide 1 artwork lives in `app/talks/raw-school-2026/img/slide1.png`. Face tracking logic is in `lib/face-mesh/`.
-
-### Experience
-
-Placeholder copy lives in `app/experience/page.tsx`.
-
-## Changing the admin password
-
-1. Open `lib/admin-config.ts`.
-2. Change the value of `ADMIN_PASSWORD`:
-
-3. Save the file and restart the dev server if it is running.
-4. Anyone already signed in keeps their session until it expires (7 days) or they log out. After a password change, old sessions still work until expiry—use **Log out** or clear `admin-auth` in browser `localStorage` if you need to force re-login immediately.
-
-Default password before you change it: `change-me`.
 
 ## Learn More
 

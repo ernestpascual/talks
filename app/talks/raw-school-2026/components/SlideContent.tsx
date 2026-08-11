@@ -7,7 +7,7 @@ import slide5Artwork from "../img/slide5.png";
 import slide7Artwork from "../img/slide7.png";
 import slide8Artwork from "../img/slide8.png";
 import slide10Artwork from "../img/slide10.png";
-import krebsQr from "@/app/talks/raw-school-2026/img/krebs.png";
+
 import slide11Artwork from "../img/slide11.png";
 import slide12Artwork from "../img/slide12.png";
 import slide13Artwork from "../img/slide13.png";
@@ -19,7 +19,7 @@ import {
 import Slide1Hero from "./Slide1Hero";
 import Slide6EyeTrack from "./Slide6EyeTrack";
 import Slide9FruitNinja from "./Slide9FruitNinja";
-import QrOverlay from "./QrOverlay";
+
 
 const SLIDE2_BG_VIDEO = "/talks/raw-school-2026/img/slide2bg.mp4";
 const SLIDE8_BG_VIDEO = "/talks/raw-school-2026/img/slide8bg.mp4";
@@ -67,7 +67,6 @@ export default function SlideContent({ slide }: { slide: Slide }) {
         return (
           <>
             <SlideFullscreenArtwork image={image} />
-            <QrOverlay image={krebsQr} ariaLabel="Krebs demo QR code" />
           </>
         );
       }
@@ -78,7 +77,7 @@ export default function SlideContent({ slide }: { slide: Slide }) {
     case "venn":
       return (
         <div className={`${center} flex-col gap-10`}>
-          <div className="relative h-56 w-80 scale-[3] sm:h-64 sm:w-96">
+          <div className="relative h-56 w-80 scale-75 sm:scale-100 md:scale-150 lg:scale-[3] sm:h-64 sm:w-96">
             <svg
               className="absolute inset-0 h-full w-full"
               viewBox="0 0 320 208"

@@ -69,16 +69,29 @@ function ShakeItSlide({ text }: { text: string }) {
   const gameUrl = "https://talks.ernestpascual.com/experience/aerocano-shake";
 
   return (
-    <div className="relative flex min-h-screen w-full flex-col bg-black text-left text-white animate-fade-in">
+    <div className="relative flex min-h-[100dvh] w-full flex-col bg-black text-left text-white animate-fade-in">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(245,158,11,0.12),_transparent_36%),linear-gradient(180deg,rgba(24,24,27,0.9),rgba(0,0,0,1))]" />
 
-      <div className="relative z-10 flex items-start justify-between gap-6 px-8 pt-8">
+      {/* Mobile/Tablet: Play Button */}
+      <div className="relative z-10 flex justify-center w-full px-8 pt-8 lg:hidden">
+        <a 
+          href={gameUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="rounded-full bg-amber-500 hover:bg-amber-400 text-black font-extrabold px-8 py-4 text-sm sm:text-base uppercase tracking-widest transition-colors shadow-[0_0_30px_rgba(245,158,11,0.3)] active:scale-95"
+        >
+          Tap here to play
+        </a>
+      </div>
+
+      {/* Desktop: QR and Link */}
+      <div className="relative z-10 hidden lg:flex items-start justify-between gap-6 px-8 pt-8">
         <SlideCornerLink url={gameUrl} />
         <SlideCornerQr url={gameUrl} />
       </div>
 
       <div className="relative z-10 flex flex-1 flex-col px-8 pb-8 pt-6">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div>
             <span className="text-xs font-bold uppercase tracking-[0.28em] text-amber-500">
               Interactive Game
