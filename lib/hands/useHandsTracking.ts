@@ -24,18 +24,28 @@ export type SwordPose = { tip: HandPoint; dip: HandPoint };
 export type HandSlot = {
   indexTip: HandPoint | null;
   indexDip: HandPoint | null;
+  indexMcp?: HandPoint | null;
+  thumbMcp?: HandPoint | null;
+  thumbTip?: HandPoint | null;
   middleMcp?: HandPoint | null;
   ringMcp?: HandPoint | null;
+  pinkyMcp?: HandPoint | null;
   wrist?: HandPoint | null;
+  landmarks?: HandPoint[] | null;
 };
 
 function emptySlot(): HandSlot {
   return {
     indexTip: null,
     indexDip: null,
+    indexMcp: null,
+    thumbMcp: null,
+    thumbTip: null,
     middleMcp: null,
     ringMcp: null,
+    pinkyMcp: null,
     wrist: null,
+    landmarks: null,
   };
 }
 
@@ -130,21 +140,29 @@ export function useHandsTracking({
             const landmarks = handsList[i]!;
             const tip = landmarks[INDEX_TIP];
             const dip = landmarks[INDEX_DIP];
+            const indexMcp = landmarks[5];
+            const thumbMcp = landmarks[2];
+            const thumbTip = landmarks[4];
             const wrist = landmarks[0];
             const middleMcp = landmarks[9];
             const ringMcp = landmarks[13];
+            const pinkyMcp = landmarks[17];
 
-            if (!tip) {
+            if (!tip && !wrist) {
               slotsRef.current[i] = emptySlot();
               continue;
             }
 
-            const point: HandPoint = { x: tip.x, y: tip.y };
-            slot.indexTip = point;
-            slot.indexDip = dip ? { x: dip.x, y: dip.y } : slot.indexDip;
+            slot.indexTip = tip ? { x: tip.x, y: tip.y } : null;
+            slot.indexDip = dip ? { x: dip.x, y: dip.y } : null;
+            slot.indexMcp = indexMcp ? { x: indexMcp.x, y: indexMcp.y } : null;
+            slot.thumbMcp = thumbMcp ? { x: thumbMcp.x, y: thumbMcp.y } : null;
+            slot.thumbTip = thumbTip ? { x: thumbTip.x, y: thumbTip.y } : null;
             slot.wrist = wrist ? { x: wrist.x, y: wrist.y } : null;
             slot.middleMcp = middleMcp ? { x: middleMcp.x, y: middleMcp.y } : null;
             slot.ringMcp = ringMcp ? { x: ringMcp.x, y: ringMcp.y } : null;
+            slot.pinkyMcp = pinkyMcp ? { x: pinkyMcp.x, y: pinkyMcp.y } : null;
+            slot.landmarks = landmarks.map((lm) => ({ x: lm.x, y: lm.y }));
             slotsRef.current[i] = slot;
           }
         });

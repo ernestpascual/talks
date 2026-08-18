@@ -31,6 +31,16 @@ const nextConfig: NextConfig = {
         destination: "/talks/aerocano/:slide",
         permanent: false,
       },
+      {
+        source: "/talk/bbdo-ai-playday",
+        destination: "/talks/bbdo-ai-playday/1",
+        permanent: false,
+      },
+      {
+        source: "/talk/bbdo-ai-playday/:slide",
+        destination: "/talks/bbdo-ai-playday/:slide",
+        permanent: false,
+      },
     ];
   },
 };
