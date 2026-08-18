@@ -675,19 +675,19 @@ export class BleRadarManager {
 
   /**
    * Request Real Web Bluetooth Scanning + Host Radio Polling
-   * Displays all listened devices simultaneously on the radar grid.
+   * Preserves synchronous user gesture activation so the browser device picker opens instantly.
    */
-  public async startRealBleScan(): Promise<{ success: boolean; message: string; isContinuous: boolean }> {
+  public async startRealBleScan(filterUnnamed = false): Promise<{ success: boolean; message: string; isContinuous: boolean }> {
     this.isScanningRealBle = true;
 
-    // 1. Instantly query host laptop Bluetooth adapter
-    const systemCount = await this.fetchSystemBluetooth();
+    // Fire host backend scan in background without awaiting (to keep synchronous user activation for navigator.bluetooth)
+    this.fetchSystemBluetooth().catch((e) => console.warn("[WRU Radar] Background host scan:", e));
 
     // Start background refresh polling while scanning
     if (!this.pollIntervalId) {
       this.pollIntervalId = setInterval(() => {
         if (this.isScanningRealBle) {
-          this.fetchSystemBluetooth();
+          this.fetchSystemBluetooth().catch(() => {});
         }
       }, 3500);
     }
@@ -695,7 +695,7 @@ export class BleRadarManager {
     if (typeof window === "undefined" || !navigator) {
       return {
         success: true,
-        message: `Detected ${systemCount} real devices via laptop Bluetooth antenna.`,
+        message: "Scanning active.",
         isContinuous: true,
       };
     }
@@ -706,15 +706,12 @@ export class BleRadarManager {
           acceptAllAdvertisements?: boolean;
           keepRepeatedDevices?: boolean;
         }) => Promise<{ stop: () => void }>;
-        requestDevice?: (options: {
-          acceptAllDevices?: boolean;
-          optionalServices?: (string | number)[];
-        }) => Promise<any>;
+        requestDevice?: (options: any) => Promise<any>;
         addEventListener?: (type: string, listener: (event: any) => void) => void;
       };
     };
 
-    // 2. Also register Web Bluetooth continuous advertisement listener
+    // 1. If Web Bluetooth continuous advertisement scanning is supported (Chrome experimental flag)
     if (nav.bluetooth && typeof nav.bluetooth.requestLEScan === "function") {
       try {
         if (nav.bluetooth.addEventListener) {
@@ -744,62 +741,111 @@ export class BleRadarManager {
       }
     }
 
-    // 3. Web Bluetooth requestDevice with full standard GATT services
-    if (nav.bluetooth && typeof nav.bluetooth.requestDevice === "function" && systemCount === 0) {
+    // 2. Web Bluetooth standard device picker (Same pattern as useBluetoothGlove)
+    if (nav.bluetooth && typeof nav.bluetooth.requestDevice === "function") {
       try {
-        const device = await nav.bluetooth.requestDevice({
-          acceptAllDevices: true,
-          optionalServices: [
-            "battery_service",
-            "device_information",
-            "generic_access",
-            "heart_rate",
-            "environmental_sensing",
-            0x1800,
-            0x180a,
-            0x180f,
-          ],
-        });
+        const namedOnlyFilters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+          .split("")
+          .map((ch) => ({ namePrefix: ch }));
+
+        const requestOptions = filterUnnamed
+          ? {
+              filters: namedOnlyFilters,
+              optionalServices: [
+                "battery_service",
+                "device_information",
+                "generic_access",
+                "heart_rate",
+                "environmental_sensing",
+                0x1800,
+                0x180a,
+                0x180f,
+              ],
+            }
+          : {
+              acceptAllDevices: true,
+              optionalServices: [
+                "battery_service",
+                "device_information",
+                "generic_access",
+                "heart_rate",
+                "environmental_sensing",
+                0x1800,
+                0x180a,
+                0x180f,
+              ],
+            };
+
+        const device = await nav.bluetooth.requestDevice(requestOptions);
 
         if (device) {
           this.watchedBleDevices.add(device);
           let batteryLevel: number | undefined = undefined;
 
-          // Attempt to query real device battery level via GATT
+          // Connect to GATT server to read telemetry
           try {
             if (device.gatt) {
               const server = await device.gatt.connect();
-              const service = await server.getPrimaryService("battery_service");
-              const characteristic = await service.getCharacteristic("battery_level");
-              const value = await characteristic.readValue();
-              batteryLevel = value.getUint8(0);
+
+              device.addEventListener("gattserverdisconnected", () => {
+                console.info(`[WRU Radar] Device ${device.name || device.id} disconnected.`);
+              });
+
+              // Query battery level
+              try {
+                const service = await server.getPrimaryService("battery_service");
+                const characteristic = await service.getCharacteristic("battery_level");
+                const value = await characteristic.readValue();
+                batteryLevel = value.getUint8(0);
+              } catch {
+                // Battery service optional
+              }
             }
-          } catch {
-            // Battery service optional
+          } catch (gattErr) {
+            console.warn("[WRU Radar] GATT connection optional:", gattErr);
           }
 
-          this.ingestSignal(device.id, device.name, -52, DEFAULT_TX_POWER, true, undefined, batteryLevel);
+          this.ingestSignal(
+            device.id,
+            device.name,
+            -46,
+            DEFAULT_TX_POWER,
+            true,
+            undefined,
+            batteryLevel
+          );
 
+          // Listen to continuous advertisements if supported
           if (typeof device.watchAdvertisements === "function") {
             try {
               await device.watchAdvertisements();
               device.addEventListener("advertisementreceived", (event: any) => {
-                const rssi = event.rssi !== undefined ? event.rssi : -58;
+                const rssi = event.rssi !== undefined ? event.rssi : -54;
                 const txPower = event.txPower !== undefined ? event.txPower : DEFAULT_TX_POWER;
                 this.ingestSignal(device.id, device.name, rssi, txPower, true);
               });
             } catch (watchErr) {
-              console.warn("watchAdvertisements error:", watchErr);
+              console.warn("[WRU Radar] watchAdvertisements error:", watchErr);
             }
           }
+
+          return {
+            success: true,
+            message: `Connected to ${device.name || "Bluetooth Device"}! Tracking live on radar.`,
+            isContinuous: true,
+          };
         }
-      } catch (pickerErr) {
-        console.warn("[WRU Radar] Picker dismissed or skipped:", pickerErr);
+      } catch (pickerErr: any) {
+        if (pickerErr.name === "NotFoundError") {
+          console.info("[WRU Radar] Device picker closed by user.");
+        } else {
+          console.warn("[WRU Radar] Device picker error:", pickerErr);
+        }
       }
     }
 
-    // 4. If 0 hardware devices are detected (e.g. mobile Safari / production cloud without local radio):
-    // Automatically load live simulated office devices so the radar is never a dead blank screen!
+    // 3. If 0 hardware devices are connected (e.g. mobile Safari / user cancelled picker):
+    // Fall back to live simulated office telemetry
     if (this.devicesMap.size === 0) {
       this.setMockDevicesEnabled(true);
       return {
