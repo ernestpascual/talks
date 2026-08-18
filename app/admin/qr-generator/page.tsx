@@ -17,6 +17,7 @@ export default function AdminQrGeneratorPage() {
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [signingIn, setSigningIn] = useState(false);
 
   const authed = signedIn ?? storedAuthed;
 
@@ -77,16 +78,24 @@ export default function AdminQrGeneratorPage() {
     );
   }, [qrDataUrl, authed]);
 
-  function handleLogin(e: FormEvent) {
+  async function handleLogin(e: FormEvent) {
     e.preventDefault();
     setError("");
+    setSigningIn(true);
 
-    if (login(password)) {
-      setSignedIn(true);
-      setPassword("");
-      return;
+    try {
+      const ok = await login(password);
+      if (ok) {
+        setSignedIn(true);
+        setPassword("");
+        return;
+      }
+      setError("Incorrect password.");
+    } catch {
+      setError("Error signing in.");
+    } finally {
+      setSigningIn(false);
     }
-    setError("Incorrect password.");
   }
 
   function handleLogout() {
@@ -140,12 +149,13 @@ export default function AdminQrGeneratorPage() {
     a.click();
   };
 
-  // Sign In view if not authed
+  // Auth gate view
   if (!authed) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center px-6 py-16 text-white bg-zinc-950 antialiased">
-        <div className="rounded-3xl border border-zinc-800 bg-zinc-900/40 p-8 shadow-2xl backdrop-blur-md">
-          <h1 className="text-2xl font-bold tracking-tight">Admin Portal</h1>
+      <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-16 text-white bg-zinc-950">
+        <div className="rounded-3xl border border-zinc-800 bg-zinc-900/50 p-8 shadow-2xl backdrop-blur-xl">
+          <span className="text-xs font-bold uppercase tracking-widest text-amber-500">Security Gate</span>
+          <h1 className="text-2xl font-bold tracking-tight text-white mt-1">Admin Access</h1>
           <p className="mt-2 text-sm text-zinc-400">
             Sign in to access the Dynamic QR Code Generator.
           </p>
@@ -166,9 +176,10 @@ export default function AdminQrGeneratorPage() {
             )}
             <button
               type="submit"
-              className="rounded-full bg-white hover:bg-zinc-200 active:scale-95 transition-all py-3.5 text-sm font-bold text-black shadow-lg shadow-white/10"
+              disabled={signingIn}
+              className="rounded-full bg-white hover:bg-zinc-200 active:scale-95 disabled:opacity-50 transition-all py-3.5 text-sm font-bold text-black shadow-lg shadow-white/10"
             >
-              Sign in
+              {signingIn ? "Signing in..." : "Sign in"}
             </button>
           </form>
         </div>

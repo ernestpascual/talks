@@ -54,10 +54,12 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 | `/talks/bbdo-ai-playday` | `app/talks/bbdo-ai-playday/` | **BBDO AI Playday** interactive slide deck (14 slides) |
 | `/talks/raw-school-2026` | `app/talks/raw-school-2026/` | **Raw School 2026** interactive slide deck (14 slides) |
 | `/talks/aerocano` | `app/talks/aerocano/` | **Aerocano** interactive slide deck with live audience widgets |
-| `/admin` | `app/admin/` | Protected admin menu for QR Generator & Aerocano database |
-| `/admin/aerocano` | `app/admin/aerocano/` | Live scores and survey responses table with reset tools |
-| `/admin/qr-generator` | `app/admin/qr-generator/` | Dynamic QR code generator for presentations and experiences |
-| `/r/[slug]` | `app/api/redirect/route.ts` | Dynamic short URL redirects (e.g. `/r/live` -> active target) |
+| `/admin` | `app/admin/` | Protected admin portal with Dynamic QR Generator, Live Dashboards, and Talks/Experience Route Guards |
+| `/admin/live-dash/aerocano` | `app/admin/live-dash/aerocano/` | Live telemetry dashboard with hierarchical data tree, raw answers, and leaderboard |
+| `/admin/aerocano` | `app/admin/aerocano/` | Forwards automatically to `/admin/live-dash/aerocano` |
+| `/r/[slug]` | `app/api/redirect/route.ts` | Dynamic short URL redirects (e.g. `/r/live`, `/r/dragon`, `/r/radar`, `/r/aerocano`) |
+| `/api/route-guard` | `app/api/route-guard/route.ts` | Query and configure route access states (Public, Password Protected, Disabled) |
+| `/api/route-guard/verify` | `app/api/route-guard/verify/route.ts` | Verify attendee access passcodes for protected decks and experiences |
 | `/api/bluetooth/scan` | `app/api/bluetooth/scan/route.ts` | CoreBluetooth & system Bluetooth scanner endpoint |
 | `/api/survey` | `app/api/survey/route.ts` | Submit and fetch survey responses |
 | `/api/scores` | `app/api/scores/route.ts` | Submit, fetch, and clear live shake-it leaderboard scores |
