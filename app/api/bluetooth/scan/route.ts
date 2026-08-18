@@ -35,9 +35,20 @@ function getDeterministicBattery(id: string): number {
 }
 
 export async function GET() {
+  // If running in a Linux cloud / serverless environment (e.g. Vercel Lambda), skip macOS native commands
+  if (process.platform !== "darwin") {
+    return NextResponse.json({
+      success: true,
+      count: 0,
+      isServerless: true,
+      devices: [],
+      timestamp: Date.now(),
+    });
+  }
+
   const devicesMap = new Map<string, ScannedDevicePayload>();
 
-  // 1. Run live native CoreBluetooth airborne scanner
+  // 1. Run live native CoreBluetooth airborne scanner if on macOS
   const binPath = path.join(process.cwd(), "bin", "ble-scanner");
   if (fs.existsSync(binPath)) {
     try {
@@ -65,7 +76,7 @@ export async function GET() {
     }
   }
 
-  // 2. Query system_profiler for paired & connected hardware
+  // 2. Query system_profiler for paired & connected hardware on macOS
   try {
     const { stdout: spStdout } = await execAsync("system_profiler SPBluetoothDataType -json", {
       timeout: 3000,
@@ -115,7 +126,6 @@ export async function GET() {
           const info = entry[name];
           const id = info.device_address || `host-${name.toLowerCase().replace(/\s+/g, "-")}`;
 
-          // If device already discovered by live BLE scanner, keep the live measured signal
           if (devicesMap.has(id)) {
             const existing = devicesMap.get(id)!;
             existing.name = name;
@@ -134,22 +144,21 @@ export async function GET() {
           if (info.device_rssi) {
             rawRssi = parseInt(info.device_rssi, 10);
           } else {
-            // Differentiate devices based on type and realistic proximity
             const lower = name.toLowerCase();
             if (lower.includes("iphone")) {
-              rawRssi = -48; // ~0.3m
+              rawRssi = -48;
             } else if (lower.includes("macbook")) {
-              rawRssi = -42; // ~0.2m
+              rawRssi = -42;
             } else if (lower.includes("mouse") || lower.includes("keyboard")) {
-              rawRssi = -52; // ~0.5m
+              rawRssi = -52;
             } else if (lower.includes("airpod") || lower.includes("headphones")) {
-              rawRssi = -58; // ~0.9m
+              rawRssi = -58;
             } else if (lower.includes("speaker") || lower.includes("krk") || lower.includes("aux")) {
-              rawRssi = -64; // ~1.7m
+              rawRssi = -64;
             } else if (lower.includes("tv")) {
-              rawRssi = -70; // ~3.1m
+              rawRssi = -70;
             } else {
-              rawRssi = -67; // ~2.3m
+              rawRssi = -67;
             }
           }
 

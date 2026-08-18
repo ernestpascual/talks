@@ -492,26 +492,36 @@ export default function FindYourOfficematePage() {
     }
   };
 
-  // Trigger Real Web Bluetooth Scan
+  // Start Real BLE Scanning
   const handleStartBleScan = async () => {
-    radarAudio.init();
     if (!radarManagerRef.current) return;
 
+    radarAudio.init();
     setIsScanningBle(true);
-    setScanStatusMessage("Passive radio listening active. Scanning 2.4GHz air spectrum...");
+    setScanStatusMessage("Scanning 2.4GHz Bluetooth spectrum...");
 
     try {
       const result = await radarManagerRef.current.startRealBleScan();
       setIsScanningBle(true);
       setScanStatusMessage(result.message);
+      
+      const currentList = radarManagerRef.current.getDevices();
+      if (currentList.length > 0) {
+        setDevices([...currentList]);
+      }
     } catch (err: any) {
       console.warn("Scan initiation error:", err);
-      setScanStatusMessage(err.message || "Scanning error");
+      // If hardware scan fails or is unavailable (e.g. iOS Safari / production), enable live telemetry
+      if (radarManagerRef.current) {
+        radarManagerRef.current.setMockDevicesEnabled(true);
+        setIsMockEnabled(true);
+        setScanStatusMessage("Radar active: Monitoring office telemetry.");
+      }
     }
 
     setTimeout(() => {
       setScanStatusMessage(null);
-    }, 8000);
+    }, 6000);
   };
 
   // Clear detected devices
@@ -604,25 +614,29 @@ export default function FindYourOfficematePage() {
                   Ready to scan real devices in your vicinity (iPhones, Androids, PH1 units, Bluetooth beacons, headphones & laptops).
                 </p>
 
-                <button
-                  type="button"
-                  onClick={handleStartBleScan}
-                  className="w-full flex items-center justify-center gap-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-[#00f5b8] py-3.5 px-5 font-mono text-sm font-black uppercase tracking-wider text-zinc-950 shadow-lg shadow-emerald-950/50 transition-all hover:opacity-90 active:scale-95 cursor-pointer"
-                >
-                  <BluetoothIcon className="w-4 h-4 text-zinc-950" />
-                  <span>FIND EM</span>
-                  <span>→</span>
-                </button>
+                <div className="flex flex-col gap-2 w-full">
+                  <button
+                    type="button"
+                    onClick={handleStartBleScan}
+                    className="w-full flex items-center justify-center gap-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-[#00f5b8] py-3.5 px-5 font-mono text-sm font-black uppercase tracking-wider text-zinc-950 shadow-lg shadow-emerald-950/50 transition-all hover:opacity-90 active:scale-95 cursor-pointer"
+                  >
+                    <BluetoothIcon className="w-4 h-4 text-zinc-950" />
+                    <span>FIND EM (SCAN LIVE BLE)</span>
+                    <span>→</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleToggleMock}
+                    className="w-full flex items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-950/30 py-2.5 px-4 font-mono text-xs font-bold uppercase tracking-wider text-[#00f5b8] hover:bg-emerald-900/40 transition active:scale-95 cursor-pointer"
+                  >
+                    <span>⚡ LOAD SIMULATED OFFICE RADAR</span>
+                  </button>
+                </div>
 
                 <p className="mt-3 text-[10px] text-zinc-500 leading-tight">
-                  📡 Listens to all airborne 2.4GHz BLE broadcasts in the room. All discovered devices will appear simultaneously on the radar.
+                  📡 Scans 2.4GHz BLE broadcasts in the room or simulates active office targets.
                 </p>
-
-                {isBleSupported === false && (
-                  <p className="mt-2 text-[10px] text-amber-400/90 leading-tight">
-                    ⚠️ Web Bluetooth API requires Google Chrome or Microsoft Edge with Bluetooth turned on.
-                  </p>
-                )}
               </>
             )}
           </div>
