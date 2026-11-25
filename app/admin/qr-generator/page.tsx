@@ -33,7 +33,10 @@ export default function AdminQrGeneratorPage() {
   // Initialize host URL from window location
   useEffect(() => {
     if (typeof window !== "undefined") {
-      setHostUrl(window.location.origin);
+      const frame = window.requestAnimationFrame(() => {
+        setHostUrl(window.location.origin);
+      });
+      return () => window.cancelAnimationFrame(frame);
     }
   }, []);
 
@@ -51,6 +54,7 @@ export default function AdminQrGeneratorPage() {
         console.error("Failed to load current redirect:", err);
       }
     }
+
     fetchRedirect();
   }, [authed]);
 
@@ -133,7 +137,7 @@ export default function AdminQrGeneratorPage() {
       } else {
         setSaveError(data.error || "Failed to update redirect");
       }
-    } catch (err) {
+    } catch {
       setSaveError("Failed to update redirect due to network error");
     } finally {
       setSaving(false);

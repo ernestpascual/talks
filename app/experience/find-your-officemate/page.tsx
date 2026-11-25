@@ -38,9 +38,16 @@ export default function FindYourOfficematePage() {
   const [compassHeading, setCompassHeading] = useState<number | null>(null);
   const [currentTimeStr, setCurrentTimeStr] = useState<string>("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [hideFaintUnknown, setHideFaintUnknown] = useState<boolean>(true); // Filters out faint & unknown background noise by default
   const [isDirectionHelperOpen, setIsDirectionHelperOpen] = useState(false);
   const [isBleSupported, setIsBleSupported] = useState<boolean | null>(null);
   const [isMockEnabled, setIsMockEnabled] = useState(false); // OFF by default
+  const [sonarEchoPopup, setSonarEchoPopup] = useState<{
+    device?: RadarDevice;
+    distance: number;
+    angle: number;
+    timestamp: number;
+  } | null>(null);
 
   // Radar Animation Loop Refs
   const sweepAngleRef = useRef(0);
@@ -327,14 +334,34 @@ export default function FindYourOfficematePage() {
         }
       }
 
-      // 5. Draw Blips / Detected Devices
-      currentDevices.forEach((dev) => {
+      // Helper to check if signal is both faint and unknown
+      const isFaintAndUnknown = (dev: RadarDevice) => {
+        const isFaint = dev.smoothedRssi <= -72 || dev.smoothedDistance > 5.5;
+        const isUnknown =
+          dev.category === "unknown" ||
+          dev.name.startsWith("BLE-") ||
+          dev.name.startsWith("Bluetooth Device") ||
+          dev.name.toLowerCase().includes("unknown");
+        return isFaint && isUnknown;
+      };
+
+      const devPassesFilter = (dev: RadarDevice) => {
+        if (hideFaintUnknown && isFaintAndUnknown(dev)) {
+          return false;
+        }
         if (categoryFilter !== "all") {
           if (categoryFilter === "audio" && (dev.category === "audio" || dev.category === "headset")) {
-            // match audio
-          } else if (dev.category !== categoryFilter) {
-            return;
+            return true;
           }
+          return dev.category === categoryFilter;
+        }
+        return true;
+      };
+
+      // 5. Draw Blips / Detected Devices
+      currentDevices.forEach((dev) => {
+        if (!devPassesFilter(dev)) {
+          return;
         }
 
         const devRad = ((dev.angle - 90) * Math.PI) / 180;
@@ -422,7 +449,9 @@ export default function FindYourOfficematePage() {
         ctx.fillStyle = isSelected ? "#ffffff" : blipColor;
         ctx.textAlign = "left";
         ctx.textBaseline = "bottom";
-        ctx.fillText(dev.codename, labelX + 11, labelY + 2);
+        // Show actual device name (up to 14 chars) instead of codename slug
+        const radarLabel = dev.name.length > 14 ? dev.name.slice(0, 13) + "…" : dev.name;
+        ctx.fillText(radarLabel, labelX + 11, labelY + 2);
 
         // Show clean distance + battery percentage + FAINT badge if weak/distant
         const distStr = `${dev.smoothedDistance}m`;
@@ -451,7 +480,7 @@ export default function FindYourOfficematePage() {
       window.removeEventListener("resize", resizeCanvas);
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     };
-  }, [categoryFilter, isHapticsEnabled, selectedDevice]);
+  }, [categoryFilter, hideFaintUnknown, isHapticsEnabled, selectedDevice]);
 
   // Handle Canvas Click to Select Target
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -471,7 +500,27 @@ export default function FindYourOfficematePage() {
     let closestDev: RadarDevice | null = null;
     let minDistance = 24;
 
+    const isFaintAndUnknown = (dev: RadarDevice) => {
+      const isFaint = dev.smoothedRssi <= -72 || dev.smoothedDistance > 5.5;
+      const isUnknown =
+        dev.category === "unknown" ||
+        dev.name.startsWith("BLE-") ||
+        dev.name.startsWith("Bluetooth Device") ||
+        dev.name.toLowerCase().includes("unknown");
+      return isFaint && isUnknown;
+    };
+
     devices.forEach((dev) => {
+      if (hideFaintUnknown && isFaintAndUnknown(dev)) {
+        return;
+      }
+      if (categoryFilter !== "all") {
+        if (categoryFilter === "audio" && (dev.category === "audio" || dev.category === "headset")) {
+          // match
+        } else if (dev.category !== categoryFilter) {
+          return;
+        }
+      }
       const devRad = ((dev.angle - 90) * Math.PI) / 180;
       const devDistPx = dev.normalizedRadius * maxRadius;
       const px = centerX + Math.cos(devRad) * devDistPx;
@@ -552,6 +601,54 @@ export default function FindYourOfficematePage() {
     radarAudio.init();
     const newMuted = radarAudio.toggleMute();
     setIsAudioMuted(newMuted);
+  };
+
+  // Emit Sonar Ping & Display Echo Popup
+  const handleEmitSonarPing = (targetDev?: RadarDevice) => {
+    radarAudio.init();
+    const currentList = radarManagerRef.current ? radarManagerRef.current.getDevices() : devices;
+    
+    const isFaintAndUnknown = (dev: RadarDevice) => {
+      const isFaint = dev.smoothedRssi <= -72 || dev.smoothedDistance > 5.5;
+      const isUnknown =
+        dev.category === "unknown" ||
+        dev.name.startsWith("BLE-") ||
+        dev.name.startsWith("Bluetooth Device") ||
+        dev.name.toLowerCase().includes("unknown");
+      return isFaint && isUnknown;
+    };
+
+    const validDevices = currentList.filter((dev) => {
+      if (hideFaintUnknown && isFaintAndUnknown(dev)) return false;
+      if (categoryFilter !== "all") {
+        if (categoryFilter === "audio" && (dev.category === "audio" || dev.category === "headset")) return true;
+        return dev.category === categoryFilter;
+      }
+      return true;
+    });
+
+    const target = targetDev || selectedDevice || (validDevices.length > 0 ? [...validDevices].sort((a, b) => a.smoothedDistance - b.smoothedDistance)[0] : undefined);
+
+    const dist = target ? target.smoothedDistance : 3.5;
+    const angle = target ? target.angle : sweepAngleRef.current;
+
+    radarAudio.playSonarPing(dist, angle);
+
+    if (target) {
+      target.pingGlow = 1.0;
+    }
+
+    // Synchronously launch native Bluetooth prompt on iOS / mobile / browser
+    if (radarManagerRef.current) {
+      radarManagerRef.current.triggerSonarBlePing(target).catch(() => {});
+    }
+
+    setSonarEchoPopup({
+      device: target,
+      distance: dist,
+      angle,
+      timestamp: Date.now(),
+    });
   };
 
   // Toggle Fullscreen
@@ -728,8 +825,24 @@ export default function FindYourOfficematePage() {
 
       {/* TOP RIGHT: Category Filters & Color Legend */}
       <div className="pointer-events-auto absolute top-5 right-5 z-30 flex flex-col items-end gap-2">
-        {/* Category Pills */}
-        <div className="flex flex-wrap justify-end gap-1.5 rounded-full border border-emerald-500/20 bg-zinc-950/80 p-1 backdrop-blur-md">
+        {/* Category Pills & Faint/Unknown Noise Filter Toggle */}
+        <div className="flex flex-wrap items-center justify-end gap-1.5 rounded-full border border-emerald-500/20 bg-zinc-950/80 p-1 backdrop-blur-md">
+          {/* Faint & Unknown Noise Filter Toggle */}
+          <button
+            type="button"
+            onClick={() => setHideFaintUnknown(!hideFaintUnknown)}
+            title="Remove faint (<= -72dBm) and unknown/unbranded BLE beacon noise"
+            className={`flex items-center gap-1 rounded-full px-2.5 py-1 font-mono text-[9px] font-bold transition-all cursor-pointer ${
+              hideFaintUnknown
+                ? "bg-amber-400 text-zinc-950 shadow-[0_0_10px_rgba(251,191,36,0.4)]"
+                : "bg-zinc-900/80 text-zinc-400 hover:text-white border border-zinc-800"
+            }`}
+          >
+            <span>{hideFaintUnknown ? "🛡️ FAINT & UNKNOWN: HIDDEN" : "👁️ SHOW ALL NOISE"}</span>
+          </button>
+
+          <span className="h-3 w-px bg-zinc-800 mx-0.5" />
+
           {[
             { id: "all", label: "ALL" },
             { id: "phone", label: "PHONES" },
@@ -904,6 +1017,16 @@ export default function FindYourOfficematePage() {
             <span>→</span>
           </button>
 
+          {/* Emit Sonar Ping Button */}
+          <button
+            type="button"
+            onClick={() => handleEmitSonarPing()}
+            className="flex items-center gap-1.5 rounded-lg border border-cyan-500/40 bg-cyan-950/50 px-3.5 py-2 font-mono text-xs font-bold tracking-wider text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.2)] backdrop-blur-md transition-all hover:bg-cyan-400 hover:text-zinc-950 active:scale-95 cursor-pointer"
+          >
+            <span>📡</span>
+            <span>SONAR PING</span>
+          </button>
+
           {devices.length > 0 && (
             <button
               type="button"
@@ -920,10 +1043,29 @@ export default function FindYourOfficematePage() {
       <div className="pointer-events-auto absolute bottom-5 right-5 z-30 flex items-center gap-3">
         <div className="flex flex-col items-end">
           <div className="font-mono text-xs font-black tracking-widest text-[#00f59b] drop-shadow-[0_0_8px_rgba(0,245,155,0.4)] sm:text-sm">
-            {devices.length} {isMockEnabled ? "OFFICEMATES" : devices.length === 1 ? "REAL DEVICE" : "REAL DEVICES"}
+            {(() => {
+              const isFaintAndUnknown = (dev: RadarDevice) => {
+                const isFaint = dev.smoothedRssi <= -72 || dev.smoothedDistance > 5.5;
+                const isUnknown =
+                  dev.category === "unknown" ||
+                  dev.name.startsWith("BLE-") ||
+                  dev.name.startsWith("Bluetooth Device") ||
+                  dev.name.toLowerCase().includes("unknown");
+                return isFaint && isUnknown;
+              };
+              const count = devices.filter((dev) => {
+                if (hideFaintUnknown && isFaintAndUnknown(dev)) return false;
+                if (categoryFilter !== "all") {
+                  if (categoryFilter === "audio" && (dev.category === "audio" || dev.category === "headset")) return true;
+                  return dev.category === categoryFilter;
+                }
+                return true;
+              }).length;
+              return `${count} ${isMockEnabled ? "OFFICEMATES" : count === 1 ? "TARGET" : "TARGETS"}`;
+            })()}
           </div>
           <div className="font-mono text-[9px] tracking-wider text-emerald-400/60">
-            {currentTimeStr || "LIVE RADAR"} · {isScanningBle ? "SCANNING" : isMockEnabled ? "SIMULATION" : "STANDBY"}
+            {currentTimeStr || "LIVE RADAR"} · {hideFaintUnknown ? "FILTER ACTIVE" : "ALL NOISE"} · {isScanningBle ? "SCANNING" : isMockEnabled ? "SIMULATION" : "STANDBY"}
           </div>
         </div>
 
@@ -1091,25 +1233,157 @@ export default function FindYourOfficematePage() {
             <div className="mt-3 flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  radarAudio.init();
-                  radarAudio.playSonarPing(
-                    selectedDevice.smoothedDistance,
-                    selectedDevice.angle
-                  );
-                }}
-                className="flex-1 rounded-lg border border-emerald-500/40 bg-emerald-950/40 py-1.5 text-center font-mono text-[10px] font-bold text-emerald-300 hover:bg-emerald-900/40 transition-colors"
+                onClick={() => handleEmitSonarPing(selectedDevice)}
+                className="flex-1 rounded-lg border border-emerald-500/40 bg-emerald-950/40 py-1.5 text-center font-mono text-[10px] font-bold text-emerald-300 hover:bg-emerald-900/40 transition-colors cursor-pointer"
               >
-                🔊 EMIT SONAR PING
+                📡 EMIT SONAR PING
               </button>
               <button
                 type="button"
                 onClick={() => setSelectedDevice(null)}
-                className="rounded-lg border border-zinc-800 bg-zinc-900 py-1.5 px-3 font-mono text-[10px] text-zinc-400 hover:text-white"
+                className="rounded-lg border border-zinc-800 bg-zinc-900 py-1.5 px-3 font-mono text-[10px] text-zinc-400 hover:text-white cursor-pointer"
               >
                 DISMISS
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* SONAR PING ECHO POPUP MODAL */}
+      {sonarEchoPopup && (
+        <div className="pointer-events-auto absolute top-20 sm:top-24 left-1/2 z-50 w-full max-w-md -translate-x-1/2 px-4 animate-fade-in">
+          <div className="relative overflow-hidden rounded-2xl border border-[#00f5b8]/50 bg-zinc-950/95 p-5 text-white shadow-[0_0_40px_rgba(0,245,184,0.3)] backdrop-blur-2xl">
+            {/* Ambient Background Glow Wave */}
+            <div className="pointer-events-none absolute -right-12 -top-12 h-36 w-36 rounded-full bg-[#00f5b8]/10 blur-2xl animate-pulse" />
+
+            <button
+              type="button"
+              onClick={() => setSonarEchoPopup(null)}
+              className="absolute top-3.5 right-3.5 text-zinc-400 hover:text-white font-mono text-sm cursor-pointer"
+            >
+              ✕
+            </button>
+
+            {/* Header Badge */}
+            <div className="flex items-center gap-2 mb-2">
+              <span className="relative flex h-3 w-3 items-center justify-center">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#00f5b8] opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-[#00f5b8]" />
+              </span>
+              <span className="font-mono text-[11px] font-black tracking-widest text-[#00f5b8] uppercase">
+                SONAR ECHO RECEIVED
+              </span>
+              <span className="rounded bg-emerald-500/20 px-2 py-0.5 font-mono text-[8px] text-emerald-300 uppercase">
+                {sonarEchoPopup.device ? "TARGET CONFIRMED" : "RADIO SWEEP"}
+              </span>
+            </div>
+
+            {sonarEchoPopup.device ? (
+              <>
+                <div className="flex items-start justify-between gap-3 mt-1">
+                  <div>
+                    <h3 className="text-lg font-black text-white tracking-tight leading-tight">
+                      {sonarEchoPopup.device.name}
+                    </h3>
+                    <p className="font-mono text-[10px] text-zinc-400 uppercase mt-0.5">
+                      {sonarEchoPopup.device.category} · {sonarEchoPopup.device.codename}
+                    </p>
+                  </div>
+                  <div className="text-right font-mono">
+                    <span className="text-xl font-black text-[#00f5b8]">
+                      {sonarEchoPopup.device.smoothedDistance}m
+                    </span>
+                    <span className="block text-[9px] text-zinc-500">
+                      ≈ {Math.round(sonarEchoPopup.device.smoothedDistance * 3.28084)} ft away
+                    </span>
+                  </div>
+                </div>
+
+                {/* Telemetry Metrics */}
+                <div className="grid grid-cols-3 gap-2 border-y border-zinc-800/80 my-3 py-2.5 font-mono text-center text-xs">
+                  <div className="flex flex-col">
+                    <span className="text-[9px] text-zinc-500 uppercase">Signal</span>
+                    <span className="font-bold" style={{ color: sonarEchoPopup.device.color || "#00f5b8" }}>
+                      {Math.min(100, Math.max(10, Math.round(((sonarEchoPopup.device.smoothedRssi + 100) / 70) * 100)))}%
+                    </span>
+                    <span className="text-[9px] text-zinc-500">{sonarEchoPopup.device.smoothedRssi} dBm</span>
+                  </div>
+                  <div className="flex flex-col border-x border-zinc-800/80">
+                    <span className="text-[9px] text-zinc-500 uppercase">Bearing</span>
+                    <span className="font-bold text-cyan-300">
+                      {Math.round(sonarEchoPopup.device.angle)}°
+                    </span>
+                    <span className="text-[9px] text-zinc-500">
+                      {sonarEchoPopup.device.angle < 45 || sonarEchoPopup.device.angle >= 315
+                        ? "North"
+                        : sonarEchoPopup.device.angle < 135
+                        ? "East"
+                        : sonarEchoPopup.device.angle < 225
+                        ? "South"
+                        : "West"}
+                    </span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[9px] text-zinc-500 uppercase">Battery</span>
+                    <span className="font-bold text-emerald-400">
+                      {sonarEchoPopup.device.battery ?? 85}%
+                    </span>
+                    <span className="text-[9px] text-zinc-500">Telemetry</span>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-2 mt-3">
+                  <button
+                    type="button"
+                    onClick={() => handleEmitSonarPing(sonarEchoPopup.device)}
+                    className="flex-1 rounded-xl bg-gradient-to-r from-emerald-500 to-[#00f5b8] py-2 text-center font-mono text-xs font-bold text-zinc-950 hover:opacity-90 transition-opacity cursor-pointer shadow-lg shadow-emerald-950/40"
+                  >
+                    📡 PING AGAIN
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedDevice(sonarEchoPopup.device!);
+                      setSonarEchoPopup(null);
+                    }}
+                    className="rounded-xl border border-zinc-800 bg-zinc-900 py-2 px-4 font-mono text-xs text-zinc-300 hover:text-white hover:border-zinc-700 transition-colors cursor-pointer"
+                  >
+                    LOCK TARGET
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSonarEchoPopup(null)}
+                    className="rounded-xl border border-zinc-800 bg-zinc-900 py-2 px-3 font-mono text-xs text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
+                  >
+                    CLOSE
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-zinc-300 leading-snug my-3 font-sans">
+                  Radial sonar pulse swept 360° across 5.0m radius. No active Bluetooth transmitters reflected.
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleEmitSonarPing()}
+                    className="flex-1 rounded-xl bg-gradient-to-r from-emerald-500 to-[#00f5b8] py-2 text-center font-mono text-xs font-bold text-zinc-950 hover:opacity-90 transition-opacity cursor-pointer"
+                  >
+                    📡 EMIT AGAIN
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSonarEchoPopup(null)}
+                    className="rounded-xl border border-zinc-800 bg-zinc-900 py-2 px-4 font-mono text-xs text-zinc-400 hover:text-white cursor-pointer"
+                  >
+                    DISMISS
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

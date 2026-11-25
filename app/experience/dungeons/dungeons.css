@@ -1,0 +1,489 @@
+.dungeon-root {
+  min-height: 100dvh;
+  background: #090b0a;
+  color: #f6edcf;
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.dungeon-shell {
+  position: relative;
+  min-height: 100dvh;
+  overflow: hidden;
+  isolation: isolate;
+  background-position: center;
+  background-size: cover;
+}
+
+.dungeon-shell::before {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  content: "";
+  background: linear-gradient(180deg, rgba(4, 7, 7, 0.22), rgba(4, 6, 5, 0.76) 72%, #050706 100%);
+}
+
+.dungeon-shell::after {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  content: "";
+  background:
+    radial-gradient(circle at center, transparent 30%, rgba(0, 0, 0, 0.72) 120%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.014) 0 1px, transparent 1px 4px);
+  mix-blend-mode: multiply;
+}
+
+.dungeon-panel {
+  border: 1px solid rgba(224, 194, 125, 0.32);
+  background: linear-gradient(145deg, rgba(17, 21, 18, 0.94), rgba(8, 11, 9, 0.86));
+  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.025);
+  backdrop-filter: blur(14px);
+}
+
+.dungeon-kicker {
+  color: #d9bd7d;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.dungeon-title {
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.8);
+}
+
+.dungeon-button {
+  border: 1px solid rgba(235, 204, 133, 0.66);
+  background: linear-gradient(180deg, #b3833c, #71491f);
+  color: #fff5d7;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35), inset 0 1px rgba(255, 255, 255, 0.25);
+}
+
+.dungeon-button:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.8);
+  opacity: 0.45;
+}
+
+.dungeon-input {
+  width: 100%;
+  border: 1px solid rgba(224, 194, 125, 0.28);
+  border-radius: 0.75rem;
+  background: rgba(2, 5, 4, 0.72);
+  color: #fff5d7;
+  outline: none;
+}
+
+.dungeon-input:focus {
+  border-color: rgba(240, 204, 120, 0.75);
+  box-shadow: 0 0 0 3px rgba(217, 189, 125, 0.12);
+}
+
+.dungeon-scroll {
+  color: #312312;
+  background:
+    linear-gradient(90deg, rgba(92, 54, 20, 0.14), transparent 12% 88%, rgba(92, 54, 20, 0.14)),
+    #ddc795;
+  box-shadow: inset 0 0 36px rgba(73, 39, 13, 0.24), 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+@keyframes dungeon-pulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(104, 211, 145, 0); }
+  50% { box-shadow: 0 0 34px rgba(104, 211, 145, 0.42); }
+}
+
+.dungeon-pass {
+  animation: dungeon-pulse 1.8s ease-in-out infinite;
+}
+
+.battle-screen {
+  position: relative;
+  min-height: 100dvh;
+  padding: 1rem;
+}
+
+.battle-hud {
+  position: relative;
+  z-index: 40;
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(260px, 1.35fr) minmax(180px, 1fr);
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1rem 1.25rem;
+  border-radius: 1rem;
+}
+
+.battle-hp-wrap {
+  width: min(100%, 620px);
+  margin-inline: auto;
+}
+
+.battle-hp {
+  height: 1rem;
+  margin-top: 0.4rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 173, 132, 0.42);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.72);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.8);
+}
+
+.battle-hp span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #861e19, #f04432, #ffad57);
+  box-shadow: 0 0 20px rgba(255, 76, 43, 0.72);
+  transition: width 300ms ease;
+}
+
+.battle-bomb {
+  border: 1px solid rgba(248, 113, 113, 0.55);
+  background: rgba(68, 10, 8, 0.78);
+  color: #fecaca;
+}
+
+.battle-bomb:disabled { opacity: 0.35; }
+
+.battle-reset {
+  border: 1px solid rgba(125, 211, 252, 0.48);
+  background: rgba(8, 47, 73, 0.72);
+  color: #bae6fd;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.battle-reset:hover {
+  border-color: rgba(186, 230, 253, 0.8);
+  background: rgba(12, 74, 110, 0.9);
+}
+
+.battle-field {
+  position: absolute;
+  inset: 7.5rem 0 0;
+  z-index: 5;
+}
+
+.battle-dragon {
+  position: absolute;
+  right: 1.5%;
+  top: 8%;
+  width: min(50vw, 740px);
+  transform-origin: 62% 75%;
+  transition: filter 180ms ease, transform 180ms ease;
+}
+
+.battle-dragon img {
+  display: block;
+  width: 100%;
+  border-radius: 48%;
+  filter: saturate(1.12) contrast(1.05);
+  mix-blend-mode: screen;
+}
+
+.battle-dragon.is-awake { animation: dragon-breathe 3.6s ease-in-out infinite; }
+.battle-dragon.is-hit { animation: dragon-hit 520ms ease-out; }
+
+.battle-player {
+  position: absolute;
+  z-index: 12;
+  bottom: calc(8% + var(--battle-offset, 0px));
+  width: clamp(84px, 10vw, 150px);
+  transform: translateX(var(--battle-x, 0px));
+  filter: drop-shadow(0 14px 11px rgba(0, 0, 0, 0.72));
+}
+
+.battle-player-warrior { left: 48%; z-index: 16; }
+.battle-player-archer { left: 27%; z-index: 13; }
+.battle-player-mage { left: 11%; z-index: 11; }
+
+.battle-player > img {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  object-position: bottom;
+  opacity: 0.58;
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.battle-player.is-connected > img { opacity: 1; }
+
+.battle-player-warrior.is-attacking > img { animation: warrior-strike 520ms ease-out; }
+.battle-player-archer.is-attacking > img { animation: archer-shot 520ms ease-out; }
+.battle-player-mage.is-attacking > img { animation: mage-cast 700ms ease-out; }
+
+.battle-nameplate {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.1rem 0.35rem;
+  align-items: center;
+  margin-top: -0.3rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 0.45rem;
+  background: rgba(3, 5, 4, 0.84);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.58rem;
+  line-height: 1.1;
+  backdrop-filter: blur(8px);
+}
+
+.battle-nameplate span:nth-child(2) { overflow: hidden; color: #fff1cf; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.battle-nameplate b { grid-column: 1 / -1; color: rgba(255, 255, 255, 0.42); font-size: 0.48rem; font-weight: 600; text-transform: uppercase; }
+
+.battle-remove-player {
+  display: grid;
+  width: 1.15rem;
+  height: 1.15rem;
+  place-items: center;
+  border: 1px solid rgba(248, 113, 113, 0.38);
+  border-radius: 999px;
+  background: rgba(69, 10, 10, 0.78);
+  color: #fca5a5;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.62rem;
+  line-height: 1;
+}
+
+.battle-remove-player:hover { background: #dc2626; color: white; }
+
+.battle-join {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 45;
+  width: min(15rem, 24vw);
+}
+
+.battle-join canvas { width: min(9rem, 13vw) !important; height: min(9rem, 13vw) !important; }
+
+.battle-waiting {
+  position: absolute;
+  left: 50%;
+  top: 43%;
+  width: min(30rem, 60vw);
+  padding: 1.1rem 1.25rem;
+  border-radius: 0.9rem;
+  text-align: center;
+  transform: translate(-50%, -50%);
+}
+
+.battle-damage {
+  position: absolute;
+  z-index: 35;
+  right: 28%;
+  top: 30%;
+  color: #fff1d1;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: clamp(2rem, 5vw, 5rem);
+  font-weight: 1000;
+  text-shadow: 0 0 10px #ff391f, 0 5px 10px #000;
+  animation: battle-damage-pop 850ms ease-out both;
+}
+
+.battle-damage small { display: block; color: #ffb285; font-size: 0.16em; letter-spacing: 0.2em; text-align: center; }
+
+.battle-damage.is-preview {
+  color: #d9f4ff;
+  text-shadow: 0 0 10px #38bdf8, 0 5px 10px #000;
+}
+
+.battle-damage.is-preview small { color: #7dd3fc; }
+
+.battle-attack {
+  position: absolute;
+  z-index: 30;
+  pointer-events: none;
+}
+
+.battle-attack-warrior {
+  top: 25%;
+  right: -45%;
+  width: 80%;
+  aspect-ratio: 1;
+  border-top: 6px solid #fff7ce;
+  border-right: 3px solid #ff8250;
+  border-radius: 50%;
+  filter: drop-shadow(0 0 8px #ff3f1f);
+  animation: sword-slash 500ms ease-out both;
+}
+
+.battle-attack-archer {
+  top: 38%;
+  left: 70%;
+  width: 42vw;
+  height: 3px;
+  background: linear-gradient(90deg, #e6d49e, #fff, transparent);
+  box-shadow: 0 0 8px #ffd064;
+  transform-origin: left;
+  animation: arrow-flight 520ms ease-in both;
+}
+
+.battle-attack-mage {
+  top: 22%;
+  left: 70%;
+  width: 3.5rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, white 0 8%, #7dd3fc 18%, #7c3aed 48%, transparent 70%);
+  filter: drop-shadow(0 0 18px #8b5cf6);
+  animation: spell-flight 700ms ease-in both;
+}
+
+.battle-quest {
+  overflow: hidden;
+  background:
+    linear-gradient(rgba(4, 6, 5, 0.72), rgba(4, 6, 5, 0.93)),
+    url("/experience/dungeons/battle/battlefield.png") center / cover fixed;
+}
+
+.battle-weapon {
+  display: grid;
+  width: min(64vw, 17rem);
+  aspect-ratio: 1;
+  margin-inline: auto;
+  place-items: center;
+  border: 1px solid rgba(218, 189, 125, 0.3);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(179, 131, 60, 0.22), rgba(0, 0, 0, 0.76) 65%);
+  font-size: clamp(6rem, 25vw, 10rem);
+  filter: grayscale(0.35);
+  transform: translateZ(0);
+  transition: border-color 180ms ease, filter 180ms ease, transform 180ms ease;
+  user-select: none;
+}
+
+.battle-weapon.is-active {
+  border-color: rgba(250, 211, 119, 0.72);
+  filter: grayscale(0) drop-shadow(0 0 18px rgba(250, 188, 78, 0.35));
+  animation: weapon-idle 2.4s ease-in-out infinite;
+}
+
+.battle-weapon-button {
+  display: block;
+  width: fit-content;
+  margin-inline: auto;
+  touch-action: manipulation;
+}
+
+.battle-weapon-button:active:not(:disabled) .battle-weapon { transform: scale(0.92) rotate(-4deg); }
+.battle-weapon-button:disabled { cursor: not-allowed; opacity: 0.58; }
+
+@keyframes dragon-breathe {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-5px) scale(1.012); }
+}
+
+@keyframes dragon-hit {
+  0%, 100% { filter: none; transform: translateX(0) rotate(0); }
+  35% { filter: brightness(1.9) saturate(0.45); transform: translateX(12px) rotate(1deg); }
+}
+
+@keyframes battle-damage-pop {
+  0% { opacity: 0; transform: translateY(24px) scale(0.65); }
+  32% { opacity: 1; transform: translateY(0) scale(1.15); }
+  100% { opacity: 0; transform: translateY(-50px) scale(0.92); }
+}
+
+@keyframes sword-slash {
+  from { opacity: 0; transform: rotate(-70deg) scale(0.4); }
+  45% { opacity: 1; }
+  to { opacity: 0; transform: rotate(55deg) scale(1.25); }
+}
+
+@keyframes arrow-flight {
+  from { opacity: 1; transform: scaleX(0.04) rotate(-9deg); }
+  to { opacity: 0; transform: translateX(22vw) scaleX(0.4) rotate(-9deg); }
+}
+
+@keyframes spell-flight {
+  from { opacity: 1; transform: translate(0, 0) scale(0.55); }
+  to { opacity: 0; transform: translate(48vw, -7vh) scale(1.8); }
+}
+
+@keyframes weapon-idle {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  50% { transform: translateY(-5px) rotate(1deg); }
+}
+
+@keyframes warrior-strike {
+  0%, 100% { transform: translate(0, 0) rotate(0); }
+  45% { transform: translate(22px, -7px) rotate(5deg) scale(1.06); }
+}
+
+@keyframes archer-shot {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  35% { transform: translateX(-9px) rotate(-3deg); }
+  55% { transform: translateX(7px) rotate(2deg); }
+}
+
+@keyframes mage-cast {
+  0%, 100% { transform: translateY(0) rotate(0); filter: none; }
+  45% { transform: translateY(-13px) rotate(7deg) scale(1.07); filter: drop-shadow(0 0 18px #8b5cf6); }
+}
+
+.bard-equalizer {
+  display: flex;
+  width: min(100%, 30rem);
+  height: 4.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.38rem;
+}
+
+.bard-equalizer span {
+  width: 0.42rem;
+  height: 34%;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f5d78f, #a78bfa 58%, #7c3aed);
+  box-shadow: 0 0 14px rgba(167, 139, 250, 0.45);
+  animation: bard-equalizer-pulse 1.05s ease-in-out infinite alternate;
+}
+
+@keyframes bard-equalizer-pulse {
+  0% { height: 14%; opacity: 0.5; transform: scaleY(0.82); }
+  45% { height: 86%; opacity: 1; }
+  100% { height: 34%; opacity: 0.75; transform: scaleY(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bard-equalizer span { animation: none; }
+}
+
+@media (max-width: 900px) {
+  .battle-hud { grid-template-columns: 1fr 1fr; gap: 0.7rem; }
+  .battle-hp-wrap { grid-column: 1 / -1; grid-row: 2; }
+  .battle-field { inset-block-start: 10.5rem; }
+  .battle-join { width: 10rem; }
+  .battle-join .dungeon-panel { padding: 0.55rem; }
+  .battle-join canvas { width: 6rem !important; height: 6rem !important; }
+  .battle-join p:last-child { display: none; }
+  .battle-player { width: clamp(66px, 15vw, 110px); }
+  .battle-dragon { top: 18%; width: min(62vw, 560px); }
+}
+
+@media (max-width: 600px) {
+  .battle-screen { padding: 0.5rem; }
+  .battle-hud { grid-template-columns: 1fr; padding: 0.7rem; }
+  .battle-hud > div:last-child { justify-content: start; }
+  .battle-hp-wrap { grid-column: auto; grid-row: auto; }
+  .battle-field { inset-block-start: 15rem; }
+  .battle-dragon { top: 22%; width: 72vw; }
+  .battle-player-mage { left: 4%; }
+  .battle-player-archer { left: 22%; }
+  .battle-player-warrior { left: 42%; }
+  .battle-nameplate { font-size: 0.48rem; }
+  .battle-join { bottom: 0.5rem; right: 0.5rem; width: 7.2rem; }
+  .battle-join canvas { width: 4.2rem !important; height: 4.2rem !important; }
+  .battle-join p { margin-top: 0.3rem; font-size: 0.42rem; }
+  .battle-waiting { top: 12%; width: 84vw; }
+}

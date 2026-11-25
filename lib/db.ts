@@ -43,6 +43,12 @@ const DEFAULT_REDIRECTS: Record<string, RedirectItem> = {
     title: "BBDO AI Playday Talk",
     createdAt: 1700000000000,
   },
+  substrate: {
+    slug: "substrate",
+    url: "/experience/substrate-blob",
+    title: "BBDO AI Creative Substrates",
+    createdAt: 1700000000000,
+  },
 };
 
 // Local development in-memory store
@@ -194,10 +200,12 @@ export async function getRedirectItem(slug: string): Promise<RedirectItem | null
   if (!result) {
     return DEFAULT_REDIRECTS[slug] || null;
   }
-  if (typeof result === "object" && (result as any).slug && (result as any).url) {
+  if (typeof result === "object" && result !== null) {
+    const resultItem = result as unknown as Partial<RedirectItem>;
+    if (!resultItem.slug || !resultItem.url) return null;
     return {
-      ...(result as unknown as RedirectItem),
-      url: String((result as any).url).replace(/^"|"$/g, ""),
+      ...(resultItem as RedirectItem),
+      url: String(resultItem.url).replace(/^"|"$/g, ""),
     };
   }
   try {
@@ -490,4 +498,3 @@ export async function checkRouteAccess(pathname: string): Promise<{
     id: exactMatch?.id || "public",
   };
 }
-

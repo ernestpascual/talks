@@ -4,9 +4,9 @@ import SlideContent from "../components/SlideContent";
 import SlideNavigation from "../components/SlideNavigation";
 import SlidePageNumber from "../components/SlidePageNumber";
 import {
-  SLIDE_COUNT,
   getSlide,
   parseSlideParam,
+  slides,
 } from "@/lib/talks/bbdo-ai-playday/slides";
 
 type PageProps = {
@@ -14,9 +14,7 @@ type PageProps = {
 };
 
 export function generateStaticParams() {
-  return Array.from({ length: SLIDE_COUNT }, (_, i) => ({
-    slide: String(i + 1),
-  }));
+  return slides.map(({ number }) => ({ slide: String(number) }));
 }
 
 export default async function SlidePage({ params }: PageProps) {

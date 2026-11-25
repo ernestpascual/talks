@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { SLIDE_COUNT, TALK_BASE_PATH } from "@/lib/talks/bbdo-ai-playday/slides";
+import { slides, TALK_BASE_PATH } from "@/lib/talks/bbdo-ai-playday/slides";
 
 type SlideNavigationProps = {
   current: number;
@@ -58,7 +58,7 @@ function isEditableTarget(target: EventTarget | null) {
 export default function SlideNavigation({ current }: SlideNavigationProps) {
   const router = useRouter();
   const isFirst = current === 1;
-  const isLast = current === SLIDE_COUNT;
+  const isLast = current === slides[slides.length - 1]?.number;
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {

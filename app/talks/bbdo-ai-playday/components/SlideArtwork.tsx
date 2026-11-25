@@ -5,7 +5,7 @@ export function SlideArtworkWithVideo({
   image,
 }: {
   videoSrc: string;
-  image: StaticImageData;
+  image?: StaticImageData;
 }) {
   return (
     <div
@@ -21,15 +21,17 @@ export function SlideArtworkWithVideo({
         className="absolute inset-0 h-full w-full object-cover"
         src={videoSrc}
       />
-      <Image
-        src={image}
-        alt=""
-        fill
-        priority
-        unoptimized
-        sizes="100vw"
-        className="object-contain object-center"
-      />
+      {image ? (
+        <Image
+          src={image}
+          alt=""
+          fill
+          priority
+          unoptimized
+          sizes="100vw"
+          className="object-contain object-center"
+        />
+      ) : null}
     </div>
   );
 }

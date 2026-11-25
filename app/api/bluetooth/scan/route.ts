@@ -34,6 +34,54 @@ function getDeterministicBattery(id: string): number {
   return 55 + (Math.abs(hash) % 44); // 55% to 98%
 }
 
+function normalizeSignature(str?: string): string {
+  if (!str) return "";
+  return str.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function isGenericName(name?: string): boolean {
+  if (!name) return true;
+  const lower = name.trim().toLowerCase();
+  return (
+    lower.startsWith("ble-") ||
+    lower.startsWith("bluetooth device") ||
+    lower.startsWith("mock-") ||
+    lower === "unknown" ||
+    lower === "unnamed"
+  );
+}
+
+function findExistingPayloadKey(
+  map: Map<string, ScannedDevicePayload>,
+  id: string,
+  name?: string,
+  address?: string
+): string | undefined {
+  if (map.has(id)) return id;
+
+  const normId = normalizeSignature(id);
+  const normAddr = normalizeSignature(address);
+  const cleanName = name?.trim().toLowerCase();
+  const generic = isGenericName(name);
+
+  for (const [key, dev] of map.entries()) {
+    const devNormId = normalizeSignature(dev.id);
+    const devNormAddr = normalizeSignature(dev.address);
+    const devCleanName = dev.name?.trim().toLowerCase();
+
+    // 1. MAC / UUID exact normalized match
+    if (normId && (devNormId === normId || devNormAddr === normId)) return key;
+    if (normAddr && (devNormId === normAddr || devNormAddr === normAddr)) return key;
+
+    // 2. Specific non-generic device name match (e.g. "Ernest's iPhone", "JBL Flip 6", "Magic Mouse")
+    if (!generic && devCleanName && !isGenericName(dev.name) && devCleanName === cleanName) {
+      return key;
+    }
+  }
+
+  return undefined;
+}
+
 export async function GET() {
   // If running in a Linux cloud / serverless environment (e.g. Vercel Lambda), skip macOS native commands
   if (process.platform !== "darwin") {
@@ -59,16 +107,28 @@ export async function GET() {
           const rawRssi = typeof item.rssi === "number" ? item.rssi : -68;
           const txPower = typeof item.txPower === "number" ? item.txPower : -59;
           const dist = calculateDistance(rawRssi, txPower);
-          
-          devicesMap.set(item.id, {
-            id: item.id,
-            name: item.name || `BLE Device (${item.id.slice(-4)})`,
-            rssi: rawRssi,
-            txPower,
-            calculatedDistance: dist,
-            battery: getDeterministicBattery(item.id),
-            isConnected: false,
-          });
+          const devName = item.name || `BLE-${item.id.slice(-4).toUpperCase()}`;
+
+          const existingKey = findExistingPayloadKey(devicesMap, item.id, item.name);
+          if (existingKey) {
+            const existing = devicesMap.get(existingKey)!;
+            existing.rssi = rawRssi;
+            existing.txPower = txPower;
+            existing.calculatedDistance = dist;
+            if (item.name && isGenericName(existing.name)) {
+              existing.name = item.name;
+            }
+          } else {
+            devicesMap.set(item.id, {
+              id: item.id,
+              name: devName,
+              rssi: rawRssi,
+              txPower,
+              calculatedDistance: dist,
+              battery: getDeterministicBattery(item.id),
+              isConnected: false,
+            });
+          }
         });
       }
     } catch (bleErr) {
@@ -105,33 +165,48 @@ export async function GET() {
             battery = parseInt(info.device_batteryLevelCase.replace("%", ""), 10);
           }
 
-          devicesMap.set(id, {
-            id,
-            name,
-            address: info.device_address,
-            rssi: rawRssi,
-            txPower,
-            calculatedDistance: dist,
-            minorType: info.device_minorType,
-            battery,
-            isConnected: true,
-          });
+          const existingKey = findExistingPayloadKey(devicesMap, id, name, info.device_address);
+          if (existingKey) {
+            const existing = devicesMap.get(existingKey)!;
+            existing.name = name;
+            existing.address = info.device_address || existing.address;
+            existing.rssi = rawRssi;
+            existing.txPower = txPower;
+            existing.calculatedDistance = dist;
+            existing.minorType = info.device_minorType || existing.minorType;
+            existing.battery = battery;
+            existing.isConnected = true;
+          } else {
+            devicesMap.set(id, {
+              id,
+              name,
+              address: info.device_address,
+              rssi: rawRssi,
+              txPower,
+              calculatedDistance: dist,
+              minorType: info.device_minorType,
+              battery,
+              isConnected: true,
+            });
+          }
         });
       });
 
-      // Not connected / nearby paired devices with differentiated realistic RSSI
+      // Not connected paired devices — ONLY include if active live RSSI is present from recent radio contact
       const notConnectedList = controller.device_not_connected || [];
       notConnectedList.forEach((entry: any) => {
         Object.keys(entry).forEach((name) => {
           const info = entry[name];
           const id = info.device_address || `host-${name.toLowerCase().replace(/\s+/g, "-")}`;
 
-          if (devicesMap.has(id)) {
-            const existing = devicesMap.get(id)!;
-            existing.name = name;
-            existing.minorType = info.device_minorType;
+          // Only consider not-connected devices if an active RSSI is measured
+          if (!info.device_rssi) {
             return;
           }
+
+          const rawRssi = parseInt(info.device_rssi, 10);
+          const txPower = -59;
+          const dist = calculateDistance(rawRssi, txPower);
 
           let battery: number | undefined;
           if (info.device_batteryLevelLeft) {
@@ -140,30 +215,17 @@ export async function GET() {
             battery = parseInt(info.device_batteryLevelCase.replace("%", ""), 10);
           }
 
-          let rawRssi: number;
-          if (info.device_rssi) {
-            rawRssi = parseInt(info.device_rssi, 10);
-          } else {
-            const lower = name.toLowerCase();
-            if (lower.includes("iphone")) {
-              rawRssi = -48;
-            } else if (lower.includes("macbook")) {
-              rawRssi = -42;
-            } else if (lower.includes("mouse") || lower.includes("keyboard")) {
-              rawRssi = -52;
-            } else if (lower.includes("airpod") || lower.includes("headphones")) {
-              rawRssi = -58;
-            } else if (lower.includes("speaker") || lower.includes("krk") || lower.includes("aux")) {
-              rawRssi = -64;
-            } else if (lower.includes("tv")) {
-              rawRssi = -70;
-            } else {
-              rawRssi = -67;
-            }
+          const existingKey = findExistingPayloadKey(devicesMap, id, name, info.device_address);
+          if (existingKey) {
+            const existing = devicesMap.get(existingKey)!;
+            existing.name = name;
+            existing.address = info.device_address || existing.address;
+            existing.minorType = info.device_minorType || existing.minorType;
+            existing.rssi = rawRssi;
+            existing.calculatedDistance = dist;
+            if (battery !== undefined) existing.battery = battery;
+            return;
           }
-
-          const txPower = -59;
-          const dist = calculateDistance(rawRssi, txPower);
 
           devicesMap.set(id, {
             id,

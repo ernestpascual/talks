@@ -1,131 +1,104 @@
 "use client";
 
 import type { Slide } from "@/lib/talks/bbdo-ai-playday/slides";
-import slide2Artwork from "../img/slide2.png";
-import slide4Artwork from "../img/slide4.png";
 import slide5Artwork from "../img/slide5.png";
-import slide7Artwork from "../img/slide7.png";
 import slide8Artwork from "../img/slide8.png";
 import slide10Artwork from "../img/slide10.png";
-
-import slide11Artwork from "../img/slide11.png";
-import slide12Artwork from "../img/slide12.png";
-import slide13Artwork from "../img/slide13.png";
-import slide14Artwork from "../img/slide14.png";
+import creativeSubstrate0 from "../img/creative-substrate/new-0.png";
+import creativeSubstrate1 from "../img/creative-substrate/new-1.png";
+import creativeSubstrate2 from "../img/creative-substrate/new-2.png";
+import creativeSubstrate3 from "../img/creative-substrate/new-3.png";
+import creativeSubstrate4 from "../img/creative-substrate/new-4.png";
+import creativeSubstrate5 from "../img/creative-substrate/new-5.png";
+import processing1 from "../img/processing/proc-1.png";
+import processing2 from "../img/processing/proc-2.png";
+import processing3 from "../img/processing/proc-3.png";
+import processing4 from "../img/processing/proc-4.png";
+import processing5 from "../img/processing/proc-5.png";
 import {
   SlideArtworkWithVideo,
   SlideFullscreenArtwork,
 } from "./SlideArtwork";
 import Slide1Hero from "./Slide1Hero";
-import Slide6EyeTrack from "./Slide6EyeTrack";
-import Slide9FruitNinja from "./Slide9FruitNinja";
+import Slide2LiquidEther from "./Slide2LiquidEther";
+import Slide3LiquidOrbs from "./Slide3LiquidOrbs";
+import SlideDmapBattle from "./SlideDmapBattle";
+import SlideIceBreakers from "./SlideIceBreakers";
+import SlideVideoGrid from "./SlideVideoGrid";
 
-
-const SLIDE2_BG_VIDEO = "/talks/bbdo-ai-playday/img/slide2bg.mp4";
 const SLIDE8_BG_VIDEO = "/talks/bbdo-ai-playday/img/slide8bg.mp4";
-const SLIDE13_BG_VIDEO = "/talks/bbdo-ai-playday/img/slide13bg.mp4";
 const SLIDE14_BG_VIDEO = "/talks/bbdo-ai-playday/img/slide14bg.mp4";
+const FIN_BG_VIDEO = "/talks/bbdo-ai-playday/img/fin.mp4";
 
 const ARTWORK_VIDEO_BY_SLIDE = {
-  2: { videoSrc: SLIDE2_BG_VIDEO, image: slide2Artwork },
-  8: { videoSrc: SLIDE8_BG_VIDEO, image: slide8Artwork },
-  13: { videoSrc: SLIDE13_BG_VIDEO, image: slide13Artwork },
-  14: { videoSrc: SLIDE14_BG_VIDEO, image: slide14Artwork },
+  12: { videoSrc: SLIDE8_BG_VIDEO, image: slide8Artwork },
+  13: { videoSrc: SLIDE14_BG_VIDEO },
+  22: { videoSrc: FIN_BG_VIDEO },
 } as const;
 
 const ARTWORK_BY_SLIDE = {
-  7: slide7Artwork,
-  4: slide4Artwork,
   5: slide5Artwork,
-  10: slide10Artwork,
-  11: slide11Artwork,
-  12: slide12Artwork,
+  6: slide10Artwork,
 } as const;
 
-const center = "flex min-h-screen items-center justify-center px-16 py-12";
+const CREATIVE_SUBSTRATE_BY_SLIDE = {
+  4: creativeSubstrate0,
+  7: creativeSubstrate1,
+  8: creativeSubstrate2,
+  9: creativeSubstrate3,
+  10: creativeSubstrate4,
+  11: creativeSubstrate5,
+} as const;
+
+const PROCESSING_BY_SLIDE = {
+  14: processing1,
+  15: processing2,
+  16: processing3,
+  17: processing4,
+  21: processing5,
+} as const;
 
 export default function SlideContent({ slide }: { slide: Slide }) {
   switch (slide.kind) {
     case "hero-image":
       return <Slide1Hero />;
 
-    case "artwork-video": {
-      const layers = ARTWORK_VIDEO_BY_SLIDE[slide.number];
-      if (!layers) return null;
-      return (
-        <SlideArtworkWithVideo
-          videoSrc={layers.videoSrc}
-          image={layers.image}
-        />
-      );
-    }
+    case "liquid-orbs":
+      return <Slide3LiquidOrbs />;
 
-    case "artwork": {
-      const image = ARTWORK_BY_SLIDE[slide.number];
+    case "video-grid":
+      return <SlideVideoGrid />;
+
+    case "dmap-battle":
+      return <SlideDmapBattle />;
+
+    case "ice-breakers":
+      return <SlideIceBreakers />;
+
+    case "creative-substrate": {
+      const image = CREATIVE_SUBSTRATE_BY_SLIDE[slide.number];
       if (!image) return null;
-      if (slide.number === 10) {
-        return (
-          <>
-            <SlideFullscreenArtwork image={image} />
-          </>
-        );
-      }
       return <SlideFullscreenArtwork image={image} />;
     }
 
+    case "processing": {
+      const image = PROCESSING_BY_SLIDE[slide.number];
+      if (!image) return null;
+      return <SlideFullscreenArtwork image={image} />;
+    }
 
-    case "venn":
-      return (
-        <div className={`${center} flex-col gap-10`}>
-          <div className="relative h-56 w-80 scale-75 sm:scale-100 md:scale-150 lg:scale-[3] sm:h-64 sm:w-96">
-            <svg
-              className="absolute inset-0 h-full w-full"
-              viewBox="0 0 320 208"
-              aria-hidden
-            >
-              <defs>
-                <clipPath id="venn-left-clip">
-                  <circle cx="88" cy="104" r="88" />
-                </clipPath>
-              </defs>
-              <circle
-                cx="88"
-                cy="104"
-                r="88"
-                fill="none"
-                stroke="white"
-                strokeWidth="2"
-              />
-              <circle
-                cx="232"
-                cy="104"
-                r="88"
-                fill="none"
-                stroke="white"
-                strokeWidth="2"
-              />
-              <circle
-                cx="232"
-                cy="104"
-                r="88"
-                fill="white"
-                clipPath="url(#venn-left-clip)"
-              />
-            </svg>
-            <div className="absolute left-0 top-1/2 flex h-44 w-44 -translate-y-1/2 items-center justify-center sm:h-52 sm:w-52">
-              <span className="text-sm font-medium text-white">CREATIVITY</span>
-            </div>
-            <div className="absolute right-0 top-1/2 flex h-44 w-44 -translate-y-1/2 items-center justify-center sm:h-52 sm:w-52">
-              <span className="text-sm font-medium text-white">TECHNOLOGY</span>
-            </div>
-          </div>
-        </div>
-      );
+    case "artwork-video": {
+      const layers = ARTWORK_VIDEO_BY_SLIDE[slide.number];
+      if (!layers) return null;
+      return <SlideArtworkWithVideo {...layers} />;
+    }
 
-    case "statement-eye":
-      return <Slide6EyeTrack />;
-    case "fruit-ninja":
-      return <Slide9FruitNinja />;
+    case "artwork": {
+      if (slide.number === 2) return <Slide2LiquidEther />;
+      const image = ARTWORK_BY_SLIDE[slide.number];
+      if (!image) return null;
+      return <SlideFullscreenArtwork image={image} />;
+    }
 
     default:
       return null;

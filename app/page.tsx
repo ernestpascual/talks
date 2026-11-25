@@ -46,6 +46,9 @@ function resolveRoute(cmd: string): string | null {
     "admin/aerocano": "/admin/aerocano",
     "admin/qr": "/admin/qr-generator",
     "qr": "/admin/qr-generator",
+    "lyria": "/proto/lyria",
+    "google-lyria": "/proto/lyria",
+    "music": "/proto/lyria",
   };
 
   if (aliasMap[cleanCmd]) {

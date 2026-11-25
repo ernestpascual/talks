@@ -1,0 +1,29 @@
+.page { position: fixed; inset: 0; background: transparent; color: #edf4e6; overflow: hidden; }
+.source, .canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; object-position: center; pointer-events: none; }
+.source { transform: scaleX(-1); mask-size: contain; mask-position: center; mask-repeat: no-repeat; mask-mode: alpha; -webkit-mask-size: contain; -webkit-mask-position: center; -webkit-mask-repeat: no-repeat; }
+:global(body):has(.page) { background: transparent; }
+.page svg { width: 23px; height: 23px; }
+.page button, .back { display: grid; place-items: center; width: 48px; height: 48px; padding: 0; border: 1px solid #ffffff25; border-radius: 50%; color: #edf4e6; background: #172019a6; backdrop-filter: blur(12px); cursor: pointer; text-decoration: none; transition: background .15s; }
+.page button:hover:enabled, .back:hover { background: #40543bd9; }
+.page button:disabled { opacity: .35; cursor: default; }
+.page button:focus-visible, .back:focus-visible { outline: 2px solid #d8ecab; outline-offset: 5px; }
+.back { position: absolute; left: max(22px, env(safe-area-inset-left)); top: max(22px, env(safe-area-inset-top)); }
+.page .start { position: absolute; left: 50%; top: 50%; width: 78px; height: 78px; transform: translate(-50%, -50%); background: #d8ecab; color: #1e3123; border: 0; }
+.page .start:hover:enabled { background: #ecf7d2; }
+.start svg { width: 30px; height: 30px; }
+.page .loading { opacity: .7; animation: breathe 1.2s ease-in-out infinite alternate; }
+.controls { position: absolute; bottom: max(28px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); display: flex; gap: 12px; }
+.cancel { position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%); }
+.progress { position: absolute; left: 0; bottom: 0; width: 100%; height: 3px; border: 0; appearance: none; background: transparent; accent-color: #d8ecab; }
+.progress::-webkit-progress-bar { background: transparent; }
+.progress::-webkit-progress-value { background: #d8ecab; transition: width .1s; }
+.progress::-moz-progress-bar { background: #d8ecab; }
+.error { position: absolute; bottom: 95px; left: 50%; transform: translateX(-50%); max-width: min(450px, 85vw); padding: 12px 18px; background: #481d19e6; border: 1px solid #e4a89a55; color: #ffe8dd; border-radius: 12px; font: 13px/1.5 Arial, sans-serif; }
+@keyframes breathe { to { box-shadow: 0 0 0 14px #d8ecab0c; } }
+@media (prefers-reduced-motion: reduce) { .page .loading { animation: none; } }
+
+.controls .selected { color: #d8ecab; border-color: #d8ecab; background: #314a2bd9; }
+.controls .backgroundReady { position: relative; border-color: #d8ecab99; }
+.backgroundReady::after { content: ""; position: absolute; right: 3px; bottom: 3px; width: 8px; height: 8px; border: 2px solid #172019; border-radius: 50%; background: #d8ecab; }
+.countdown { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; color: white; font: 120px Georgia, serif; text-shadow: 0 2px 22px #0009; }
+.countdown svg { width: 56px; height: 56px; filter: drop-shadow(0 2px 8px #0009); }

@@ -6,6 +6,24 @@ import type { RedirectItem } from "@/lib/db";
 import type { ManagedRoute, RouteStatus } from "@/lib/route-guard-types";
 import Link from "next/link";
 import QRCode from "qrcode";
+import {
+  collection,
+  deleteDoc,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  writeBatch,
+} from "firebase/firestore";
+import { onValue, ref } from "firebase/database";
+import { firestore, realtimeDatabase } from "@/lib/firebase";
+import {
+  normalizeSubstrateSubmission,
+  SUBSTRATE_COLLECTION,
+  SUBSTRATE_TUNING_PATH,
+  type SubstrateSubmission,
+} from "@/lib/substrate-blob";
+import DungeonsAdmin from "./DungeonsAdmin";
 
 function subscribe() {
   return () => {};
@@ -17,6 +35,7 @@ const PRESET_DESTINATIONS = [
   { label: "WRU?! Radar", url: "/experience/find-your-officemate" },
   { label: "Aerocano Talk", url: "/talks/aerocano" },
   { label: "BBDO AI Playday", url: "/talks/bbdo-ai-playday" },
+  { label: "BBDO Creative Substrates", url: "/experience/substrate-blob" },
   { label: "Raw School 2026", url: "/talks/raw-school-2026" },
 ];
 
@@ -32,7 +51,7 @@ export default function AdminPage() {
   const authed = signedIn ?? storedAuthed;
 
   // Active Tab
-  const [activeTab, setActiveTab] = useState<"qr" | "dash" | "talks" | "experience">("qr");
+  const [activeTab, setActiveTab] = useState<"qr" | "dash" | "bbdo" | "dungeons" | "talks" | "experience">("qr");
 
   // Dynamic QR Code Form State
   const [qrTitle, setQrTitle] = useState("Audience Live Survey");
@@ -60,12 +79,26 @@ export default function AdminPage() {
   const [searchTalks, setSearchTalks] = useState("");
   const [searchExp, setSearchExp] = useState("");
 
+  // Slide 3 tuning visibility (stored in Firebase Realtime Database)
+  const [liveTuningVisible, setLiveTuningVisible] = useState(false);
+  const [savingTuning, setSavingTuning] = useState(false);
+  const [tuningMsg, setTuningMsg] = useState("");
+
+  // BBDO AI Creative Substrates (Firestore)
+  const [substrateResponses, setSubstrateResponses] = useState<SubstrateSubmission[]>([]);
+  const [loadingSubstrates, setLoadingSubstrates] = useState(true);
+  const [substrateError, setSubstrateError] = useState("");
+  const [deletingSubstrate, setDeletingSubstrate] = useState<string | null>(null);
+
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Initialize Host Origin
   useEffect(() => {
     if (typeof window !== "undefined") {
-      setHostUrl(window.location.origin);
+      const frame = window.requestAnimationFrame(() => {
+        setHostUrl(window.location.origin);
+      });
+      return () => window.cancelAnimationFrame(frame);
     }
   }, []);
 
@@ -108,6 +141,7 @@ export default function AdminPage() {
           setRouteGuards(gData.routes);
         }
       }
+
     } catch (err) {
       console.error("Failed to load admin data:", err);
     } finally {
@@ -116,10 +150,114 @@ export default function AdminPage() {
     }
   };
 
-  useEffect(() => {
-    if (authed) {
-      fetchAdminData();
+  const handleToggleLiveTuning = async () => {
+    const nextVal = !liveTuningVisible;
+    setSavingTuning(true);
+    setTuningMsg("");
+    try {
+      const adminPw = getAdminPassword() || password;
+      const response = await fetch("/api/live-tuning", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(adminPw ? { "x-admin-password": adminPw } : {}),
+        },
+        body: JSON.stringify({ visible: nextVal }),
+      });
+      const result = await response.json() as { success?: boolean; error?: string };
+      if (!response.ok || !result.success) throw new Error(result.error || "Could not update Slide 3 tuning visibility.");
+      setTuningMsg(nextVal ? "✓ Visible on Slide 3" : "✓ Hidden on Slide 3");
+      setTimeout(() => setTuningMsg(""), 3000);
+    } catch (err) {
+      console.error("Failed to update live tuning visibility:", err);
+    } finally {
+      setSavingTuning(false);
     }
+  };
+
+  const handleDeleteSubstrate = async (entry: SubstrateSubmission) => {
+    if (!confirm(`Delete ${entry.name}'s substrate response?`)) return;
+    setDeletingSubstrate(entry.id);
+    setSubstrateError("");
+    try {
+      await deleteDoc(doc(firestore, SUBSTRATE_COLLECTION, entry.id));
+    } catch (error) {
+      console.error("Failed to delete substrate response:", error);
+      setSubstrateError("Could not delete that Firestore response.");
+    } finally {
+      setDeletingSubstrate(null);
+    }
+  };
+
+  const handleClearSubstrates = async () => {
+    if (substrateResponses.length === 0) return;
+    if (!confirm(`Delete all ${substrateResponses.length} substrate responses?`)) {
+      return;
+    }
+
+    setDeletingSubstrate("all");
+    setSubstrateError("");
+    try {
+      for (let start = 0; start < substrateResponses.length; start += 500) {
+        const batch = writeBatch(firestore);
+        substrateResponses.slice(start, start + 500).forEach((entry) => {
+          batch.delete(doc(firestore, SUBSTRATE_COLLECTION, entry.id));
+        });
+        await batch.commit();
+      }
+    } catch (error) {
+      console.error("Failed to clear substrate responses:", error);
+      setSubstrateError("Could not clear the Firestore responses.");
+    } finally {
+      setDeletingSubstrate(null);
+    }
+  };
+
+  useEffect(() => {
+    if (!authed) return;
+    const frame = window.requestAnimationFrame(() => {
+      void fetchAdminData();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [authed]);
+
+  useEffect(() => {
+    if (!authed) return;
+    const tuningRef = ref(realtimeDatabase, SUBSTRATE_TUNING_PATH);
+    return onValue(tuningRef, (snapshot) => {
+      if (!snapshot.exists()) {
+        setLiveTuningVisible(false);
+        void fetch("/api/live-tuning", { cache: "no-store" });
+        return;
+      }
+      const value = snapshot.val() as { visible?: unknown } | null;
+      setLiveTuningVisible(value?.visible === true);
+    });
+  }, [authed]);
+
+  useEffect(() => {
+    if (!authed) return;
+    const substrateQuery = query(
+      collection(firestore, SUBSTRATE_COLLECTION),
+      orderBy("submittedAt", "desc"),
+    );
+    return onSnapshot(
+      substrateQuery,
+      (snapshot) => {
+        setSubstrateResponses(
+          snapshot.docs.map((item) =>
+            normalizeSubstrateSubmission(item.id, item.data()),
+          ),
+        );
+        setSubstrateError("");
+        setLoadingSubstrates(false);
+      },
+      (error) => {
+        console.error("Failed to load BBDO substrate responses:", error);
+        setSubstrateError("Unable to load Firestore responses.");
+        setLoadingSubstrates(false);
+      },
+    );
   }, [authed]);
 
   // Render QR Code preview on Canvas
@@ -459,6 +597,32 @@ export default function AdminPage() {
           >
             <span>📊</span>
             <span>Live Dashboards</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("bbdo")}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+              activeTab === "bbdo"
+                ? "bg-rose-500/10 border border-rose-500/40 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.15)]"
+                : "text-zinc-400 hover:text-white hover:bg-zinc-900"
+            }`}
+          >
+            <span>🔴</span>
+            <span>BBDO Playday ({substrateResponses.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("dungeons")}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+              activeTab === "dungeons"
+                ? "bg-orange-500/10 border border-orange-500/40 text-orange-300 shadow-[0_0_15px_rgba(249,115,22,0.15)]"
+                : "text-zinc-400 hover:text-white hover:bg-zinc-900"
+            }`}
+          >
+            <span>🐉</span>
+            <span>Dungeons</span>
           </button>
 
           <button
@@ -890,7 +1054,192 @@ export default function AdminPage() {
         )}
 
         {/* =========================================================================
-            TAB 3: TALKS MANAGEMENT (/talks)
+            TAB 3: BBDO AI PLAYDAY
+           ========================================================================= */}
+        {activeTab === "bbdo" && (
+          <div className="space-y-8 animate-in fade-in duration-300">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-rose-400">
+                  BBDO AI Playday Activity
+                </span>
+                <h2 className="mt-0.5 text-2xl font-black tracking-tight text-white">
+                  AI Creative Substrates
+                </h2>
+                <p className="mt-1 max-w-2xl text-xs leading-relaxed text-zinc-400">
+                  View and remove Firestore submissions, open the audience questionnaire, and control the Slide 3 tuning drawer.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <a
+                  href="/experience/substrate-blob"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3.5 py-2 text-xs font-bold text-rose-300 transition hover:bg-rose-500/20"
+                >
+                  Open questionnaire ↗
+                </a>
+                <a
+                  href="/talks/bbdo-ai-playday/3"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-xl border border-blue-500/30 bg-blue-500/10 px-3.5 py-2 text-xs font-bold text-blue-300 transition hover:bg-blue-500/20"
+                >
+                  Open Slide 3 ↗
+                </a>
+              </div>
+            </div>
+
+            <section className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_auto]">
+              <div className="rounded-2xl border border-rose-500/25 bg-rose-950/10 p-5 backdrop-blur-md shadow-xl">
+                <div className="flex items-start gap-3.5">
+                  <span className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-2 text-2xl">🎛️</span>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-sm font-bold text-white">Live tuning panel</h3>
+                      <span className="rounded-full border border-rose-500/35 bg-rose-500/10 px-2 py-0.5 text-[10px] font-mono font-semibold text-rose-300">
+                        SLIDE 3
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-zinc-400">
+                      Show or hide the floating grain controls during the BBDO presentation.
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-5 flex items-center justify-between border-t border-zinc-800/80 pt-4">
+                  <div>
+                    {tuningMsg ? (
+                      <span className="text-xs font-mono text-rose-300">{tuningMsg}</span>
+                    ) : (
+                      <span className="text-xs font-mono text-zinc-500">
+                        Synced from Realtime Database
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={handleToggleLiveTuning}
+                      disabled={savingTuning}
+                      className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors disabled:opacity-50 ${
+                        liveTuningVisible
+                          ? "bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.35)]"
+                          : "bg-zinc-700"
+                      }`}
+                      aria-label="Toggle BBDO Slide 3 live tuning visibility"
+                    >
+                      <span
+                        className={`inline-block h-5 w-5 rounded-full bg-white transition-transform ${
+                          liveTuningVisible ? "translate-x-6" : "translate-x-1"
+                        }`}
+                      />
+                    </button>
+                    <span className={`text-xs font-mono font-bold ${liveTuningVisible ? "text-rose-300" : "text-zinc-500"}`}>
+                      {liveTuningVisible ? "VISIBLE" : "HIDDEN"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid min-w-52 grid-cols-2 gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/45 p-5">
+                <div>
+                  <p className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Responses</p>
+                  <p className="mt-1 text-3xl font-black text-white">{substrateResponses.length}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Storage</p>
+                  <p className="mt-2 text-sm font-bold text-amber-300">Firestore</p>
+                </div>
+              </div>
+            </section>
+
+            <section className="space-y-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="text-lg font-black text-white">Audience submissions</h3>
+                  <p className="mt-0.5 text-xs text-zinc-500">
+                    Question 1 drives red, Question 2 blue, and Question 3 yellow.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleClearSubstrates}
+                  disabled={substrateResponses.length === 0 || deletingSubstrate === "all"}
+                  className="rounded-xl border border-red-500/30 bg-red-950/20 px-3.5 py-2 text-xs font-bold text-red-300 transition hover:bg-red-900/30 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {deletingSubstrate === "all" ? "Deleting…" : "Delete all responses"}
+                </button>
+              </div>
+
+              {substrateError && (
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs text-red-300">
+                  {substrateError}
+                </div>
+              )}
+
+              <div className="overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900/40 shadow-2xl">
+                {loadingSubstrates ? (
+                  <div className="py-14 text-center text-xs font-mono text-zinc-500">
+                    Loading Firestore responses…
+                  </div>
+                ) : substrateResponses.length === 0 ? (
+                  <div className="py-14 text-center">
+                    <p className="text-sm font-bold text-white">No submissions yet</p>
+                    <p className="mt-1 text-xs text-zinc-500">Responses will appear here in real time.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="border-b border-zinc-800 bg-black/30 font-mono uppercase tracking-wider text-zinc-500">
+                        <tr>
+                          <th className="px-4 py-3">Name</th>
+                          <th className="px-4 py-3 text-[#FF3154]">Red</th>
+                          <th className="px-4 py-3 text-[#6F9AFF]">Blue</th>
+                          <th className="px-4 py-3 text-[#FFD23F]">Yellow</th>
+                          <th className="px-4 py-3">Submitted</th>
+                          <th className="px-4 py-3 text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-800/70">
+                        {substrateResponses.map((entry) => (
+                          <tr key={entry.id} className="transition hover:bg-white/[0.025]">
+                            <td className="px-4 py-3 font-bold text-white">{entry.name}</td>
+                            <td className="px-4 py-3 font-mono text-[#FF6078]">{entry.redScore}/5</td>
+                            <td className="px-4 py-3 font-mono text-[#78A1FF]">{entry.blueScore}/5</td>
+                            <td className="px-4 py-3 font-mono text-[#FFE27B]">{entry.yellowScore}/5</td>
+                            <td className="whitespace-nowrap px-4 py-3 font-mono text-zinc-500">
+                              {entry.submittedAt
+                                ? new Date(entry.submittedAt).toLocaleString()
+                                : "Pending…"}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteSubstrate(entry)}
+                                disabled={deletingSubstrate === entry.id}
+                                className="rounded-lg border border-red-500/30 bg-red-950/20 px-2.5 py-1.5 font-mono text-[11px] text-red-300 transition hover:bg-red-900/30 disabled:opacity-40"
+                              >
+                                {deletingSubstrate === entry.id ? "Deleting…" : "Delete"}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
+        )}
+
+        {/* =========================================================================
+            TAB 4: DUNGEONS DATA CONTROL
+           ========================================================================= */}
+        {activeTab === "dungeons" && <DungeonsAdmin />}
+
+        {/* =========================================================================
+            TAB 5: TALKS MANAGEMENT (/talks)
            ========================================================================= */}
         {activeTab === "talks" && (
           <div className="space-y-6 animate-in fade-in duration-300">
@@ -931,7 +1280,7 @@ export default function AdminPage() {
         )}
 
         {/* =========================================================================
-            TAB 4: EXPERIENCE MANAGEMENT (/experience)
+            TAB 6: EXPERIENCE MANAGEMENT (/experience)
            ========================================================================= */}
         {activeTab === "experience" && (
           <div className="space-y-6 animate-in fade-in duration-300">

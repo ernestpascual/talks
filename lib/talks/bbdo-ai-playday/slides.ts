@@ -1,42 +1,53 @@
 export const TALK_SLUG = "bbdo-ai-playday";
-export const SLIDE_COUNT = 14;
 export const TALK_BASE_PATH = `/talks/${TALK_SLUG}`;
 
 export type Slide =
   | { number: 1; kind: "hero-image" }
-  | { number: 2; kind: "artwork-video" }
-  | { number: 3; kind: "venn" }
-  | { number: 4; kind: "artwork" }
+  | { number: 2; kind: "artwork" }
+  | { number: 3; kind: "liquid-orbs" }
+  | { number: 4; kind: "creative-substrate" }
   | { number: 5; kind: "artwork" }
-  | { number: 6; kind: "statement-eye"; text: string }
-  | { number: 7; kind: "artwork" }
-  | { number: 8; kind: "artwork-video" }
-  | { number: 9; kind: "fruit-ninja" }
-  | { number: 10; kind: "artwork" }
-  | { number: 11; kind: "artwork" }
-  | { number: 12; kind: "artwork" }
+  | { number: 6; kind: "artwork" }
+  | { number: 7; kind: "creative-substrate" }
+  | { number: 8; kind: "creative-substrate" }
+  | { number: 9; kind: "creative-substrate" }
+  | { number: 10; kind: "creative-substrate" }
+  | { number: 11; kind: "creative-substrate" }
+  | { number: 12; kind: "artwork-video" }
   | { number: 13; kind: "artwork-video" }
-  | { number: 14; kind: "artwork-video" };
+  | { number: 14; kind: "processing" }
+  | { number: 15; kind: "processing" }
+  | { number: 16; kind: "processing" }
+  | { number: 17; kind: "processing" }
+  | { number: 18; kind: "video-grid" }
+  | { number: 19; kind: "dmap-battle" }
+  | { number: 20; kind: "ice-breakers" }
+  | { number: 21; kind: "processing" }
+  | { number: 22; kind: "artwork-video" };
 
 export const slides: Slide[] = [
   { number: 1, kind: "hero-image" },
-  { number: 2, kind: "artwork-video" },
-  { number: 3, kind: "venn" },
-  { number: 4, kind: "artwork" },
+  { number: 2, kind: "artwork" },
+  { number: 3, kind: "liquid-orbs" },
+  { number: 4, kind: "creative-substrate" },
   { number: 5, kind: "artwork" },
-  {
-    number: 6,
-    kind: "statement-eye",
-    text: "the input becomes output if i process",
-  },
-    { number: 7, kind: "artwork" },
-  { number: 8, kind: "artwork-video" },
-  { number: 9, kind: "fruit-ninja" },
-  { number: 10, kind: "artwork" },
-  { number: 11, kind: "artwork" },
-  { number: 12, kind: "artwork" },
+  { number: 6, kind: "artwork" },
+  { number: 7, kind: "creative-substrate" },
+  { number: 8, kind: "creative-substrate" },
+  { number: 9, kind: "creative-substrate" },
+  { number: 10, kind: "creative-substrate" },
+  { number: 11, kind: "creative-substrate" },
+  { number: 12, kind: "artwork-video" },
   { number: 13, kind: "artwork-video" },
-  { number: 14, kind: "artwork-video" },
+  { number: 14, kind: "processing" },
+  { number: 15, kind: "processing" },
+  { number: 16, kind: "processing" },
+  { number: 17, kind: "processing" },
+  { number: 18, kind: "video-grid" },
+  { number: 19, kind: "dmap-battle" },
+  { number: 20, kind: "ice-breakers" },
+  { number: 21, kind: "processing" },
+  { number: 22, kind: "artwork-video" },
 ];
 
 export function getSlide(number: number): Slide | undefined {
@@ -45,6 +56,6 @@ export function getSlide(number: number): Slide | undefined {
 
 export function parseSlideParam(param: string): number | null {
   const n = Number(param);
-  if (!Number.isInteger(n) || n < 1 || n > SLIDE_COUNT) return null;
+  if (!Number.isInteger(n) || n < 1) return null;
   return n;
 }

@@ -55,6 +55,9 @@ export function distanceToRssi(
 export function categorizeDevice(name?: string, minorType?: string): DeviceCategory {
   if (minorType) {
     const mLower = minorType.toLowerCase();
+    if (mLower.includes("phone") || mLower.includes("cellular") || mLower.includes("smartphone") || mLower.includes("mobile")) {
+      return "phone";
+    }
     if (mLower.includes("headphone") || mLower.includes("headset") || mLower.includes("speaker")) {
       return "audio";
     }
@@ -66,7 +69,7 @@ export function categorizeDevice(name?: string, minorType?: string): DeviceCateg
   if (!name) return "unknown";
   const lower = name.toLowerCase();
 
-  // 1. Phones
+  // 1. Phones (iOS, Android, and all major smartphone brand signatures)
   if (
     lower.includes("iphone") ||
     lower.includes("pixel") ||
@@ -76,7 +79,20 @@ export function categorizeDevice(name?: string, minorType?: string): DeviceCateg
     lower.includes("xperia") ||
     lower.includes("xiaomi") ||
     lower.includes("redmi") ||
-    lower.includes("oneplus")
+    lower.includes("oneplus") ||
+    lower.includes("huawei") ||
+    lower.includes("oppo") ||
+    lower.includes("vivo") ||
+    lower.includes("realme") ||
+    lower.includes("honor") ||
+    lower.includes("poco") ||
+    lower.includes("motorola") ||
+    lower.includes("moto") ||
+    lower.includes("nothing") ||
+    lower.includes("ph1") ||
+    lower.includes("mobile") ||
+    lower.includes("cellular") ||
+    lower.includes("ios")
   ) {
     return "phone";
   }
@@ -434,8 +450,58 @@ export class BleRadarManager {
     }
   }
 
+  private normalizeKey(key?: string): string {
+    if (!key) return "";
+    return key.toLowerCase().replace(/[^a-z0-9]/g, "");
+  }
+
+  private isGenericName(name?: string): boolean {
+    if (!name) return true;
+    const lower = name.trim().toLowerCase();
+    return (
+      lower.startsWith("ble-") ||
+      lower.startsWith("bluetooth device") ||
+      lower.startsWith("mock-") ||
+      lower === "unknown" ||
+      lower === "unnamed"
+    );
+  }
+
   /**
-   * Process raw BLE advertisement packet or system discovered device
+   * Find an existing device in the tracking map matching:
+   * 1. Exact ID
+   * 2. Normalized address/ID (e.g. "aa:bb:cc:dd:ee:ff" vs "aa-bb-cc-dd-ee-ff" vs "aabbccddeeff")
+   * 3. Exact non-generic device name (e.g. "Ernest's iPhone", "JBL Flip 6", "M5Core2-Glove", etc.)
+   */
+  private findExistingDevice(id: string, name?: string): RadarDevice | undefined {
+    if (this.devicesMap.has(id)) {
+      return this.devicesMap.get(id);
+    }
+
+    const normId = this.normalizeKey(id);
+    const cleanName = name?.trim().toLowerCase();
+    const generic = this.isGenericName(name);
+
+    for (const dev of this.devicesMap.values()) {
+      const devNormId = this.normalizeKey(dev.id);
+
+      // 1. Normalized ID / Address match
+      if (normId && devNormId === normId) {
+        return dev;
+      }
+
+      // 2. Specific non-generic device name match
+      if (!generic && dev.name && !this.isGenericName(dev.name) && dev.name.trim().toLowerCase() === cleanName) {
+        return dev;
+      }
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Process raw BLE advertisement packet or system discovered device.
+   * Adjusts telemetry smoothly when signal is fluctuating without spawning duplicates.
    */
   public ingestSignal(
     id: string,
@@ -447,14 +513,14 @@ export class BleRadarManager {
     battery?: number
   ) {
     const now = Date.now();
-    let device = this.devicesMap.get(id);
+    let device = this.findExistingDevice(id, name);
 
     // Filter out invalid readings
     const clampedRssi = Math.min(-20, Math.max(-105, rawRssi));
     const calculatedDist = rssiToDistance(clampedRssi, txPower);
 
     // Direction estimation algorithm based on RF differential gradient
-    const estimatedAngle = this.updateDirectionEstimation(id, clampedRssi, this.currentHeading);
+    const estimatedAngle = this.updateDirectionEstimation(device ? device.id : id, clampedRssi, this.currentHeading);
 
     if (!device) {
       const codename = name
@@ -468,7 +534,7 @@ export class BleRadarManager {
 
       device = {
         id,
-        name: name || `Bluetooth Device (${id.slice(-4)})`,
+        name: name || `BLE-${id.slice(-4).toUpperCase()}`,
         codename,
         category,
         rssi: clampedRssi,
@@ -482,7 +548,7 @@ export class BleRadarManager {
         velocity: { x: (Math.random() - 0.5) * 0.002, y: (Math.random() - 0.5) * 0.002 },
         trail: [],
         lastSeen: now,
-        pingGlow: 0,
+        pingGlow: 0.8,
         isRealBle,
         color: getDeviceColor(name, category),
         battery: devBattery,
@@ -491,16 +557,16 @@ export class BleRadarManager {
 
       this.devicesMap.set(id, device);
     } else {
-      // Exponential Moving Average (EMA) smoothing for stability against multipath fading
-      const alpha = 0.35;
+      // Exponential Moving Average (EMA) smoothing for stability against multipath signal fluctuations
+      const alpha = 0.28;
       device.smoothedRssi = Number(
         (alpha * clampedRssi + (1 - alpha) * device.smoothedRssi).toFixed(1)
       );
       device.rssi = clampedRssi;
 
-      const newDistance = rssiToDistance(device.smoothedRssi, txPower);
+      const targetDist = rssiToDistance(device.smoothedRssi, txPower);
       device.smoothedDistance = Number(
-        (alpha * newDistance + (1 - alpha) * device.smoothedDistance).toFixed(2)
+        (alpha * targetDist + (1 - alpha) * device.smoothedDistance).toFixed(2)
       );
       device.distance = calculatedDist;
       device.normalizedRadius = Math.min(
@@ -508,13 +574,16 @@ export class BleRadarManager {
         Math.max(0.12, device.smoothedDistance / MAX_RADAR_RANGE_METERS)
       );
       device.lastSeen = now;
+      device.pingGlow = Math.max(device.pingGlow, 0.7);
+
       if (battery !== undefined) {
         device.battery = battery;
       }
 
-      if (name && (!device.name || device.name.startsWith("Bluetooth Device") || device.name !== name)) {
+      // Upgrade generic name if actual advertised name arrives
+      if (name && (this.isGenericName(device.name) || device.name !== name)) {
         device.name = name;
-        device.category = categorizeDevice(name, minorType);
+        device.category = categorizeDevice(name, minorType || device.category);
         device.color = getDeviceColor(name, device.category);
         device.codename = name.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8).toUpperCase();
       }
@@ -603,10 +672,21 @@ export class BleRadarManager {
   }
 
   /**
-   * Physics step for smoothing angle interpolation and ping glow decay
+   * Physics step for smoothing angle interpolation, ping glow decay,
+   * and auto-pruning devices whose signal is no longer detected.
    */
   public updatePhysics(deltaTimeSec: number) {
-    this.devicesMap.forEach((device) => {
+    const now = Date.now();
+    const toPrune: string[] = [];
+    const SIGNAL_LOST_TIMEOUT_MS = 4000; // 4 seconds without detection -> prune from radar
+
+    this.devicesMap.forEach((device, id) => {
+      // Auto-prune real BLE devices if signal is no longer heard
+      if (device.isRealBle && now - device.lastSeen > SIGNAL_LOST_TIMEOUT_MS) {
+        toPrune.push(id);
+        return;
+      }
+
       // Natural micro-wandering if mock is enabled
       if (!device.isRealBle && this.isMockEnabled) {
         const noise = (Math.random() - 0.5) * 1.5;
@@ -639,13 +719,21 @@ export class BleRadarManager {
       }
     });
 
+    if (toPrune.length > 0) {
+      toPrune.forEach((id) => {
+        this.devicesMap.delete(id);
+        this.directionTrackers.delete(id);
+      });
+    }
+
     if (this.onUpdateCallback) {
       this.onUpdateCallback(this.getDevices());
     }
   }
 
   /**
-   * Fetch real Bluetooth hardware devices from the host backend
+   * Fetch real Bluetooth hardware devices from the host backend.
+   * Immediately prunes any device that was not detected in the current scan tick.
    */
   public async fetchSystemBluetooth(): Promise<number> {
     try {
@@ -653,6 +741,8 @@ export class BleRadarManager {
       if (!res.ok) return 0;
       const data = await res.json();
       if (data.success && Array.isArray(data.devices)) {
+        const tickSeenIds = new Set<string>();
+
         data.devices.forEach((dev: any) => {
           this.ingestSignal(
             dev.id,
@@ -663,7 +753,31 @@ export class BleRadarManager {
             dev.minorType,
             dev.battery
           );
+
+          const updatedDev = this.findExistingDevice(dev.id, dev.name);
+          if (updatedDev) {
+            tickSeenIds.add(updatedDev.id);
+          }
         });
+
+        // Strict next-tick removal: Remove any device that is no longer detected in this scan tick
+        const toPrune: string[] = [];
+        this.devicesMap.forEach((device, id) => {
+          if (device.isRealBle && !tickSeenIds.has(id)) {
+            toPrune.push(id);
+          }
+        });
+
+        if (toPrune.length > 0) {
+          toPrune.forEach((id) => {
+            this.devicesMap.delete(id);
+            this.directionTrackers.delete(id);
+          });
+          if (this.onUpdateCallback) {
+            this.onUpdateCallback(this.getDevices());
+          }
+        }
+
         return data.devices.length;
       }
       return 0;
@@ -717,7 +831,7 @@ export class BleRadarManager {
         if (nav.bluetooth.addEventListener) {
           nav.bluetooth.addEventListener("advertisementreceived", (event: any) => {
             const device = event.device || {};
-            const id = device.id || event.address || (device.name ? `ble-${hashStringToAngle(device.name)}` : `ble-pkt-${Date.now()}`);
+            const id = device.id || event.address || (device.name ? `ble-${hashStringToAngle(device.name)}` : (event.device?.id || "ble-anon-radio"));
             const name = device.name || event.name || undefined;
             const rssi = event.rssi !== undefined ? event.rssi : -65;
             const txPower = event.txPower !== undefined ? event.txPower : DEFAULT_TX_POWER;
@@ -861,6 +975,84 @@ export class BleRadarManager {
       message: `Active Bluetooth scanning! ${totalCount} real devices detected in your vicinity.`,
       isContinuous: true,
     };
+  }
+
+  /**
+   * Triggers the native Bluetooth device discovery / pairing prompt on iOS / mobile / desktop
+   * synchronously inside the user's Sonar Ping click gesture.
+   */
+  public async triggerSonarBlePing(targetDev?: RadarDevice): Promise<void> {
+    if (typeof window === "undefined" || !navigator) return;
+
+    const nav = navigator as unknown as {
+      bluetooth?: {
+        requestDevice?: (options: any) => Promise<any>;
+      };
+    };
+
+    if (nav.bluetooth && typeof nav.bluetooth.requestDevice === "function") {
+      try {
+        const device = await nav.bluetooth.requestDevice({
+          acceptAllDevices: true,
+          optionalServices: [
+            "battery_service",
+            "device_information",
+            "generic_access",
+            0x1800,
+            0x1802, // Immediate Alert Service
+            0x180a,
+            0x180f,
+          ],
+        });
+
+        if (device) {
+          this.watchedBleDevices.add(device);
+          let batteryLevel: number | undefined = undefined;
+
+          // Connect to GATT server to trigger alert and read telemetry
+          try {
+            if (device.gatt) {
+              const server = await device.gatt.connect();
+
+              // Trigger Immediate Alert if supported on the hardware
+              try {
+                const alertService = await server.getPrimaryService(0x1802);
+                const alertChar = await alertService.getCharacteristic(0x2a06);
+                await alertChar.writeValue(new Uint8Array([0x01])); // Mild Alert (beep / haptic)
+              } catch {
+                // Immediate alert optional
+              }
+
+              // Query battery level
+              try {
+                const service = await server.getPrimaryService("battery_service");
+                const characteristic = await service.getCharacteristic("battery_level");
+                const value = await characteristic.readValue();
+                batteryLevel = value.getUint8(0);
+              } catch {
+                // Battery service optional
+              }
+            }
+          } catch (gattErr) {
+            console.warn("[WRU Radar] Sonar GATT alert warning:", gattErr);
+          }
+
+          this.ingestSignal(
+            device.id,
+            device.name,
+            -44,
+            DEFAULT_TX_POWER,
+            true,
+            undefined,
+            batteryLevel
+          );
+        }
+      } catch (err: any) {
+        if (err.name !== "NotFoundError") {
+          console.warn("[WRU Radar] Sonar Bluetooth prompt:", err);
+        }
+      }
+    }
   }
 
   public getDevices(): RadarDevice[] {

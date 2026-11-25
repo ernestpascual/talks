@@ -91,6 +91,14 @@ export const DEFAULT_MANAGED_ROUTES: ManagedRoute[] = [
     status: "public",
   },
   {
+    id: "exp-substrate-blob",
+    path: "/experience/substrate-blob",
+    title: "BBDO AI Creative Substrates",
+    description: "Live three-question Likert survey that generates named audience color substrates.",
+    category: "experience",
+    status: "public",
+  },
+  {
     id: "exp-price-demo",
     path: "/experience/raw-school-2026/price-demo",
     title: "Smile Price Facial Tracking",
